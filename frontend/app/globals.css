@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f6f1e8;
+  --foreground: #1f2a24;
+  --panel: #ffffffcc;
+  --panel-strong: #ffffff;
+  --border: #e2d7c6;
+  --muted: #6a746e;
+  --accent: #0f766e;
+  --accent-strong: #0b5f58;
+  --shadow: 20px 30px 60px rgba(31, 42, 36, 0.12);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-body);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body), "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}

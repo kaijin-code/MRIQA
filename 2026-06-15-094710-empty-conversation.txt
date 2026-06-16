@@ -1,0 +1,855 @@
+
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+ > 分析当前项目                                                                 
+▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+
+ Thinking
+ │ The user wants me to analyze the current project. Let me explore the project
+ │ structure.
+ ▪ Let me explore the current project structure.
+
+ ▪ Agent {"description":"Explore project structure","prompt":"Thoroughly expl…
+   └ I have now thoroughly explored the entire project. Here is my
+     comprehensive report.
+
+     ---
+
+     Project Overview: Multi-Role Intelligent Q&A Agent System (多角色智能问答
+     Agent 系统)
+
+     This is a full-stack AI chat application with a Chinese-language focus.
+     It implements a multi-role collaborative dialogue system where an
+     orchestrator automatically routes user questions to the appropriate AI
+     agent role(s), with RAG (Retrieval-Augmented Generation) support for the
+     technical support role.
+
+     ---
+
+     1. Directory Structure
+      C:\project\pisxai\act01\
+      ├── README.md                             
+      (comprehensive Chinese-language documentation)
+      ├── backend/
+      │   ├── .env.example                       (environment
+      variable template)
+      │   ├── requirements.txt                   (Python dependencies)
+      │   └── app/
+      │       ├── __init__.py                    (empty)
+      │       ├── main.py                        (FastAPI application
+      entry point)
+      │       ├── config.py                      (Settings dataclass,
+      env loading)
+      │       ├── db.py                          (async SQLAlchemy
+      engine, session, init_db)
+      │       ├── models.py                      (SQLAlchemy ORM models
+      with pgvector)
+      │       ├── schemas.py                     (Pydantic
+      request/response schemas)
+      │       ├── orchestrator.py                (role router +
+      orchestrator logic)
+      │       ├── api/
+      │       │   ├── __init__.py                (empty)
+      │       │   └── routes.py                  (FastAPI route handlers)
+      │       ├── agents/
+      │       │   ├── __init__.py                (re-exports all 3 agents)
+      │       │   ├── base.py                    (BaseRoleAgent +
+      RoleResult dataclass)
+      │       │   ├── customer_service.py        (CustomerServiceAgent)
+      │       │   ├── technical_support.py       (TechnicalSupportAgent
+      with RAG)
+      │       │   └── product_manager.py         (ProductManagerAgent)
+      │       ├── rag/
+      │       │   ├── __init__.py                (empty)
+      │       │   ├── ingest.py                  (document chunking
+      + embedding ingestion)
+      │       │   └── retriever.py               (vector similarity search
+      via pgvector)
+      │       ├── llm/
+      │       │   ├── __init__.py                (empty)
+      │       │   └── qwen.py                   
+      (QwenClient: ChatTongyi/ChatOpenAI + DashScope
+      │       └── utils/
+      │           ├── __init__.py                (empty)
+      │           └── chunking.py                (sliding-window text
+      chunking utility)
+      └── frontend/
+          ├── package.json
+          ├── tsconfig.json
+          ├── next.config.ts
+          ├── postcss.config.mjs
+          ├── eslint.config.mjs
+          ├── next-env.d.ts
+          ├── agents.md                          (Next.js agent-rules note)
+          ├── .gitignore
+          └── app/
+              ├── layout.tsx                     (root layout with
+      Chinese fonts)
+              ├── page.tsx                       (main single-page chat UI)
+              ├── globals.css                    (Tailwind v4 + CSS
+      custom properties)
+              └── api/
+                  ├── _proxy.ts                  (generic reverse-proxy helper)
+                  ├── chat/
+                  │   └── route.ts               (POST /api/chat -> backend)
+                  ├── ingest/
+                  │   └── route.ts               (POST /api/ingest -> backend)
+                  └── conversations/
+                      └── route.ts               (GET /api/conversations
+      -> backend)
+     ---
+
+     2. Project Type
+     ┌──────────────┬───────────────────────────────────────────────────┐
+     │ Aspect       │ Details                                           │
+     ├──────────────┼───────────────────────────────────────────────────┤
+     │ Backend      │ Python 3.11+                                      │
+     │ Language     │                                                   │
+     │ Backend      │ FastAPI + Uvicorn                                 │
+     │ Framework    │                                                   │
+     │ LLM          │ LangChain (langchain-community.ChatTongyi,        │
+     │ Framework    │ langchain-openai.ChatOpenAI)                      │
+     │ LLM Provider │ Alibaba Cloud DashScope (Qwen model qwen3.6-plus, │
+     │              │ embedding model text-embedding-v3)                │
+     │ Database     │ PostgreSQL with pgvector extension                │
+     │ ORM          │ SQLAlchemy 2.x (async) + asyncpg                  │
+     │ Frontend     │ TypeScript 5                                      │
+     │ Language     │                                                   │
+     │ Frontend     │ Next.js 16 (App Router), React 19                 │
+     │ Framework    │                                                   │
+     │ Frontend     │ Tailwind CSS v4 (via @tailwindcss/postcss)        │
+     │ Styling      │                                                   │
+     │ Build Tools  │ npm (frontend), pip (backend)                     │
+     └──────────────┴───────────────────────────────────────────────────┘
+     ---
+
+     3. Key Configuration Files
+
+     C:\project\pisxai\act01\backend\requirements.txt
+
+     Python dependencies: fastapi, uvicorn, sqlalchemy, asyncpg, pgvector,
+     python-dotenv, pydantic, langchain, langchain-community,
+     langchain-openai, dashscope, aiofiles.
+
+     C:\project\pisxai\act01\backend\.env.example
+
+     Defines 11 environment variables including DATABASE_URL,
+     DASHSCOPE_API_KEY, DASHSCOPE_HTTP_BASE_URL, QWEN_MODEL,
+     QWEN_EMBEDDING_MODEL, RAG_TOP_K, RAG_MIN_SIMILARITY, CHUNK_SIZE,
+     CHUNK_OVERLAP, LOG_LEVEL, DB_ECHO.
+
+     C:\project\pisxai\act01\frontend\package.json
+
+     - Dependencies: next@16.2.6, react@19.2.4, react-dom@19.2.4
+     - Dev dependencies: @tailwindcss/postcss@^4, tailwindcss@^4,
+     typescript@^5, eslint@^9, eslint-config-next@16.2.6
+     - Scripts: dev, build, start, lint
+
+     C:\project\pisxai\act01\frontend\tsconfig.json
+
+     Targets ES2017, uses bundler module resolution, react-jsx JSX mode,
+     strict mode enabled, path alias @/* mapped to ./*.
+
+     C:\project\pisxai\act01\frontend\postcss.config.mjs
+
+     Uses @tailwindcss/postcss as the sole PostCSS plugin.
+
+     C:\project\pisxai\act01\frontend\eslint.config.mjs
+
+     Extends eslint-config-next/core-web-vitals and
+     eslint-config-next/typescript.
+
+     C:\project\pisxai\act01\frontend\next.config.ts
+
+     Minimal/empty Next.js config (default settings).
+
+     ---
+
+     4. Main Source Files and Their Purpose
+
+     Backend
+     ┌───────────────────────────────────────┬─────────────────────────────┐
+     │ File                                  │ Purpose                     │
+     ├───────────────────────────────────────┼─────────────────────────────┤
+     │ backend/app/main.py                   │ FastAPI app entry point.    │
+     │                                       │ Registers the API router    │
+     │                                       │ under /api prefix and runs  │
+     │                                       │ init_db() on startup        │
+     │                                       │ (creates pgvector extension │
+     │                                       │ + tables).                  │
+     │ backend/app/config.py                 │ Loads .env via              │
+     │                                       │ python-dotenv and exposes a │
+     │                                       │ frozen Settings dataclass   │
+     │                                       │ singleton with all config   │
+     │                                       │ values.                     │
+     │ backend/app/db.py                     │ Creates the async           │
+     │                                       │ SQLAlchemy engine and       │
+     │                                       │ session factory. init_db()  │
+     │                                       │ ensures the vector          │
+     │                                       │ extension exists and runs   │
+     │                                       │ CREATE TABLE for all        │
+     │                                       │ models.                     │
+     │ backend/app/models.py                 │ Four SQLAlchemy models:     │
+     │                                       │ Conversation (id, title,    │
+     │                                       │ data JSONB, created_at),    │
+     │                                       │ Message (role, content,     │
+     │                                       │ sources JSONB), Document    │
+     │                                       │ (title, source), Chunk      │
+     │                                       │ (content, embedding via     │
+     │                                       │ pgvector Vector()).         │
+     │ backend/app/schemas.py                │ Pydantic models for API     │
+     │                                       │ I/O: ChatRequest,           │
+     │                                       │ ChatResponse, RoleResponse, │
+     │                                       │ ChunkCitation,              │
+     │                                       │ ConversationSummary,        │
+     │                                       │ IngestRequest/IngestRespons │
+     │                                       │ e, etc.                     │
+     │ backend/app/orchestrator.py           │ The core routing logic.     │
+     │                                       │ Uses a detailed Chinese     │
+     │                                       │ system prompt to ask Qwen   │
+     │                                       │ which roles should respond. │
+     │                                       │ Parses comma-separated role │
+     │                                       │ IDs. Falls back to          │
+     │                                       │ customer_service on parse   │
+     │                                       │ failure. Runs selected      │
+     │                                       │ agents sequentially.        │
+     │ backend/app/agents/base.py            │ Abstract BaseRoleAgent      │
+     │                                       │ class and RoleResult        │
+     │                                       │ dataclass (role, content,   │
+     │                                       │ citations).                 │
+     │ backend/app/agents/customer_service.p │ Simple agent: sends user    │
+     │ y                                     │ message + history to Qwen   │
+     │                                       │ with a customer-service     │
+     │                                       │ system prompt. Returns no   │
+     │                                       │ citations.                  │
+     │ backend/app/agents/technical_support. │ RAG-enabled agent: calls    │
+     │ py                                    │ retrieve_chunks() first,    │
+     │                                       │ injects retrieved           │
+     │                                       │ knowledge-base snippets     │
+     │                                       │ into the system prompt,     │
+     │                                       │ then asks Qwen. Returns     │
+     │                                       │ citation metadata.          │
+     │ backend/app/agents/product_manager.py │ Simple agent: sends user    │
+     │                                       │ message + history to Qwen   │
+     │                                       │ with a product-manager      │
+     │                                       │ system prompt. Returns no   │
+     │                                       │ citations.                  │
+     │ backend/app/llm/qwen.py               │ QwenClient singleton        │
+     │                                       │ wrapping either ChatOpenAI  │
+     │                                       │ (if DASHSCOPE_HTTP_BASE_URL │
+     │                                       │ is set, using               │
+     │                                       │ OpenAI-compatible mode) or  │
+     │                                       │ ChatTongyi (native          │
+     │                                       │ DashScope). Also wraps      │
+     │                                       │ DashScope TextEmbedding for │
+     │                                       │ embeddings. Handles         │
+     │                                       │ DASHSCOPE_HTTP_BASE_URL env │
+     │                                       │ var carefully (pops before  │
+     │                                       │ import, restores after).    │
+     │ backend/app/rag/ingest.py             │ Accepts a list of           │
+     │                                       │ documents, chunks each via  │
+     │                                       │ chunk_text(), generates     │
+     │                                       │ embeddings via Qwen client, │
+     │                                       │ and writes Document + Chunk │
+     │                                       │ rows to PostgreSQL.         │
+     │ backend/app/rag/retriever.py          │ Embeds the query text, runs │
+     │                                       │ a cosine-distance search    │
+     │                                       │ against Chunk.embedding via │
+     │                                       │ pgvector, returns top-K     │
+     │                                       │ results filtered by         │
+     │                                       │ RAG_MIN_SIMILARITY.         │
+     │ backend/app/utils/chunking.py         │ Simple sliding-window text  │
+     │                                       │ splitter operating on       │
+     │                                       │ character count with        │
+     │                                       │ configurable overlap.       │
+     │ backend/app/api/routes.py             │ Five endpoints: GET         │
+     │                                       │ /health, POST /chat         │
+     │                                       │ (orchestrates multi-role    │
+     │                                       │ response, persists          │
+     │                                       │ messages), GET              │
+     │                                       │ /conversations (paginated   │
+     │                                       │ list with message counts),  │
+     │                                       │ GET /conversations/{id}     │
+     │                                       │ (full message history),     │
+     │                                       │ POST /ingest                │
+     │                                       │ (knowledge-base ingestion). │
+     │                                       │ Auto-generates conversation │
+     │                                       │ titles from the first 32    │
+     │                                       │ characters of the initial   │
+     │                                       │ message. Loads the last 10  │
+     │                                       │ messages as history         │
+     │                                       │ context.                    │
+     └───────────────────────────────────────┴─────────────────────────────┘
+     Frontend
+     ┌─────────────────────────────────────────┬────────────────────────────┐
+     │ File                                    │ Purpose                    │
+     ├─────────────────────────────────────────┼────────────────────────────┤
+     │ frontend/app/layout.tsx                 │ Root HTML layout. Sets     │
+     │                                         │ lang="zh-CN", loads Google │
+     │                                         │ Fonts Noto Sans SC (body)  │
+     │                                         │ and ZCOOL XiaoWei          │
+     │                                         │ (display) for Chinese text │
+     │                                         │ rendering.                 │
+     │ frontend/app/page.tsx                   │ The entire single-page     │
+     │                                         │ chat UI (~460 lines).      │
+     │                                         │ Implements: left sidebar   │
+     │                                         │ with conversation list     │
+     │                                         │ (create, select, show      │
+     │                                         │ message                    │
+     │                                         │ counts/timestamps); right  │
+     │                                         │ panel with chat messages,  │
+     │                                         │ color-coded role badges    │
+     │                                         │ (green=customer service,   │
+     │                                         │ amber=tech support,        │
+     │                                         │ blue=product manager),     │
+     │                                         │ collapsible citation       │
+     │                                         │ display with similarity    │
+     │                                         │ scores, textarea input     │
+     │                                         │ (Enter to send,            │
+     │                                         │ Shift+Enter for newline).  │
+     │                                         │ All state managed via      │
+     │                                         │ React useState/useEffect.  │
+     │                                         │ Fully Chinese UI.          │
+     │ frontend/app/globals.css                │ Tailwind v4 entry (@import │
+     │                                         │ "tailwindcss"), defines    │
+     │                                         │ CSS custom properties for  │
+     │                                         │ theming (warm beige        │
+     │                                         │ background, teal accent    │
+     │                                         │ color, panel/border/shadow │
+     │                                         │ tokens).                   │
+     │ frontend/app/api/_proxy.ts              │ Generic reverse-proxy      │
+     │                                         │ function that forwards     │
+     │                                         │ Next.js API route requests │
+     │                                         │ to the FastAPI backend at  │
+     │                                         │ BACKEND_BASE_URL (default  │
+     │                                         │ http://localhost:8000).    │
+     │                                         │ Strips hop-by-hop headers. │
+     │ frontend/app/api/chat/route.ts          │ Proxies POST /api/chat to  │
+     │                                         │ backend.                   │
+     │ frontend/app/api/ingest/route.ts        │ Proxies POST /api/ingest   │
+     │                                         │ to backend.                │
+     │ frontend/app/api/conversations/route.ts │ Proxies GET                │
+     │                                         │ /api/conversations to      │
+     │                                         │ backend.                   │
+     └─────────────────────────────────────────┴────────────────────────────┘
+     ---
+
+     5. Documentation
+
+     C:\project\pisxai\act01\README.md
+
+     A comprehensive 280-line Chinese-language README covering:
+     - Overall architecture diagram (browser -> Next.js -> FastAPI -> agents
+     -> PostgreSQL/pgvector)
+     - Full tech stack listing for both backend and frontend
+     - Data model descriptions (conversations, messages, documents, chunks)
+     - Implemented features: multi-role orchestration, role-specific system
+     prompts, RAG retrieval augmentation, conversation history management,
+     frontend UI details
+     - Complete directory structure tree
+     - Environment setup instructions (PostgreSQL+pgvector, DashScope API key,
+     Node.js)
+     - Startup commands for both backend (uvicorn app.main:app --reload) and
+     frontend (npm run dev)
+     - Usage walkthrough (ingesting knowledge base, starting conversations,
+     viewing history)
+     - HTTP API reference table with request/response examples
+     - Full configuration variable reference table (11 env vars)
+     - Current limitations: no streaming output, role routing depends on LLM
+     format, fixed 10-message history window, no auth/user system
+
+     C:\project\pisxai\act01\frontend\agents.md
+
+     A brief note warning that this version of Next.js (16) may have breaking
+     changes from earlier versions, advising to consult
+     node_modules/next/dist/docs/ before writing code.
+
+     ---
+
+     Summary
+
+     This is a well-structured, production-quality full-stack AI application.
+     The backend is a Python/FastAPI service that uses Alibaba Cloud's Qwen
+     LLM (via DashScope/LangChain) to power three specialized AI agent roles,
+     with RAG retrieval for the technical support role using pgvector. The
+     frontend is a Next.js 16 / React 19 / TypeScript application with a
+     polished Chinese-language chat interface styled with Tailwind CSS v4. The
+     two communicate via a Next.js API route proxy layer to avoid CORS issues.
+     The project has no test files, no CI/CD configuration, and no .gitignore
+     at the root (only in frontend/).
+
+ Thinking
+ │ The analysis is complete. Let me summarize the findings.
+ ▪ 项目分析报告：多角色智能问答 Agent 系统
+
+   这是一个全栈 AI 聊天应用，核心架构如下：
+
+   技术栈
+   ┌────────┬───────────────────────────────────────────────────────┐
+   │ 层     │ 技术                                                  │
+   ├────────┼───────────────────────────────────────────────────────┤
+   │ 前端   │ Next.js 16 + React 19 + TypeScript + Tailwind CSS v4  │
+   │ 后端   │ Python FastAPI + SQLAlchemy (async)                   │
+   │ LLM    │ 阿里云通义千问（Qwen），通过 DashScope/LangChain 调用 │
+   │ 数据库 │ PostgreSQL + pgvector（向量检索）                     │
+   └────────┴───────────────────────────────────────────────────────┘
+   核心功能
+
+   多角色智能路由 — orchestrator.py 用 LLM 自动判断用户问题应由哪个角色回答：
+     - 客服代理 — 通用客户问答
+     - 技术支持代理 — 带 RAG 检索增强，引用知识库文档
+     - 产品经理代理 — 产品规划类问题
+   RAG 知识库 — 文档分块 → 向量化存入 pgvector → 余弦相似度检索 →
+   注入技术支持回答
+   会话管理 — 支持多会话、历史消息（最近 10 条）、自动标题生成
+   前端 UI — 中文界面，左侧会话列表 +
+   右侧聊天面板，角色颜色区分，引用来源可折叠展示
+
+   项目结构
+    act01/
+    ├── backend/app/
+    │   ├── main.py            # FastAPI 入口
+    │   ├── orchestrator.py    # 角色路由核心逻辑
+    │   ├── agents/            # 三个角色 Agent
+    │   ├── rag/               # 文档摄入 + 向量检索
+    │   ├── llm/qwen.py        # Qwen LLM 封装
+    │   └── api/routes.py      # 5 个 API 端点
+    ├── frontend/app/
+    │   ├── page.tsx           # 单页聊天 UI（~460 行）
+    │   └── api/               # Next.js 代理层 → 后端
+    └── README.md              # 完整中文文档
+   当前不足
+
+   - 无流式输出（SSE/WebSocket）
+   - 角色路由依赖 LLM 格式输出，解析可能不稳定
+   - 历史消息固定 10 条窗口
+   - 无用户认证系统
+   - 无测试文件和 CI/CD 配置
+
+   整体是一个结构清晰、功能完整的项目，适合在此基础上迭代开发。需要我针对某个方
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+ > 分析当前项目                                                                 
+▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+
+ Thinking
+ │ The user wants me to analyze the current project. Let me explore the project
+ │ structure.
+ ▪ Let me explore the current project structure.
+
+ ▪ Agent {"description":"Explore project structure","prompt":"Thoroughly expl…
+   └ I have now thoroughly explored the entire project. Here is my
+     comprehensive report.
+
+     ---
+
+     Project Overview: Multi-Role Intelligent Q&A Agent System (多角色智能问答
+     Agent 系统)
+
+     This is a full-stack AI chat application with a Chinese-language focus.
+     It implements a multi-role collaborative dialogue system where an
+     orchestrator automatically routes user questions to the appropriate AI
+     agent role(s), with RAG (Retrieval-Augmented Generation) support for the
+     technical support role.
+
+     ---
+
+     1. Directory Structure
+      C:\project\pisxai\act01\
+      ├── README.md                             
+      (comprehensive Chinese-language documentation)
+      ├── backend/
+      │   ├── .env.example                       (environment
+      variable template)
+      │   ├── requirements.txt                   (Python dependencies)
+      │   └── app/
+      │       ├── __init__.py                    (empty)
+      │       ├── main.py                        (FastAPI application
+      entry point)
+      │       ├── config.py                      (Settings dataclass,
+      env loading)
+      │       ├── db.py                          (async SQLAlchemy
+      engine, session, init_db)
+      │       ├── models.py                      (SQLAlchemy ORM models
+      with pgvector)
+      │       ├── schemas.py                     (Pydantic
+      request/response schemas)
+      │       ├── orchestrator.py                (role router +
+      orchestrator logic)
+      │       ├── api/
+      │       │   ├── __init__.py                (empty)
+      │       │   └── routes.py                  (FastAPI route handlers)
+      │       ├── agents/
+      │       │   ├── __init__.py                (re-exports all 3 agents)
+      │       │   ├── base.py                    (BaseRoleAgent +
+      RoleResult dataclass)
+      │       │   ├── customer_service.py        (CustomerServiceAgent)
+      │       │   ├── technical_support.py       (TechnicalSupportAgent
+      with RAG)
+      │       │   └── product_manager.py         (ProductManagerAgent)
+      │       ├── rag/
+      │       │   ├── __init__.py                (empty)
+      │       │   ├── ingest.py                  (document chunking
+      + embedding ingestion)
+      │       │   └── retriever.py               (vector similarity search
+      via pgvector)
+      │       ├── llm/
+      │       │   ├── __init__.py                (empty)
+      │       │   └── qwen.py                   
+      (QwenClient: ChatTongyi/ChatOpenAI + DashScope
+      │       └── utils/
+      │           ├── __init__.py                (empty)
+      │           └── chunking.py                (sliding-window text
+      chunking utility)
+      └── frontend/
+          ├── package.json
+          ├── tsconfig.json
+          ├── next.config.ts
+          ├── postcss.config.mjs
+          ├── eslint.config.mjs
+          ├── next-env.d.ts
+          ├── agents.md                          (Next.js agent-rules note)
+          ├── .gitignore
+          └── app/
+              ├── layout.tsx                     (root layout with
+      Chinese fonts)
+              ├── page.tsx                       (main single-page chat UI)
+              ├── globals.css                    (Tailwind v4 + CSS
+      custom properties)
+              └── api/
+                  ├── _proxy.ts                  (generic reverse-proxy helper)
+                  ├── chat/
+                  │   └── route.ts               (POST /api/chat -> backend)
+                  ├── ingest/
+                  │   └── route.ts               (POST /api/ingest -> backend)
+                  └── conversations/
+                      └── route.ts               (GET /api/conversations
+      -> backend)
+     ---
+
+     2. Project Type
+     ┌──────────────┬───────────────────────────────────────────────────┐
+     │ Aspect       │ Details                                           │
+     ├──────────────┼───────────────────────────────────────────────────┤
+     │ Backend      │ Python 3.11+                                      │
+     │ Language     │                                                   │
+     │ Backend      │ FastAPI + Uvicorn                                 │
+     │ Framework    │                                                   │
+     │ LLM          │ LangChain (langchain-community.ChatTongyi,        │
+     │ Framework    │ langchain-openai.ChatOpenAI)                      │
+     │ LLM Provider │ Alibaba Cloud DashScope (Qwen model qwen3.6-plus, │
+     │              │ embedding model text-embedding-v3)                │
+     │ Database     │ PostgreSQL with pgvector extension                │
+     │ ORM          │ SQLAlchemy 2.x (async) + asyncpg                  │
+     │ Frontend     │ TypeScript 5                                      │
+     │ Language     │                                                   │
+     │ Frontend     │ Next.js 16 (App Router), React 19                 │
+     │ Framework    │                                                   │
+     │ Frontend     │ Tailwind CSS v4 (via @tailwindcss/postcss)        │
+     │ Styling      │                                                   │
+     │ Build Tools  │ npm (frontend), pip (backend)                     │
+     └──────────────┴───────────────────────────────────────────────────┘
+     ---
+
+     3. Key Configuration Files
+
+     C:\project\pisxai\act01\backend\requirements.txt
+
+     Python dependencies: fastapi, uvicorn, sqlalchemy, asyncpg, pgvector,
+     python-dotenv, pydantic, langchain, langchain-community,
+     langchain-openai, dashscope, aiofiles.
+
+     C:\project\pisxai\act01\backend\.env.example
+
+     Defines 11 environment variables including DATABASE_URL,
+     DASHSCOPE_API_KEY, DASHSCOPE_HTTP_BASE_URL, QWEN_MODEL,
+     QWEN_EMBEDDING_MODEL, RAG_TOP_K, RAG_MIN_SIMILARITY, CHUNK_SIZE,
+     CHUNK_OVERLAP, LOG_LEVEL, DB_ECHO.
+
+     C:\project\pisxai\act01\frontend\package.json
+
+     - Dependencies: next@16.2.6, react@19.2.4, react-dom@19.2.4
+     - Dev dependencies: @tailwindcss/postcss@^4, tailwindcss@^4,
+     typescript@^5, eslint@^9, eslint-config-next@16.2.6
+     - Scripts: dev, build, start, lint
+
+     C:\project\pisxai\act01\frontend\tsconfig.json
+
+     Targets ES2017, uses bundler module resolution, react-jsx JSX mode,
+     strict mode enabled, path alias @/* mapped to ./*.
+
+     C:\project\pisxai\act01\frontend\postcss.config.mjs
+
+     Uses @tailwindcss/postcss as the sole PostCSS plugin.
+
+     C:\project\pisxai\act01\frontend\eslint.config.mjs
+
+     Extends eslint-config-next/core-web-vitals and
+     eslint-config-next/typescript.
+
+     C:\project\pisxai\act01\frontend\next.config.ts
+
+     Minimal/empty Next.js config (default settings).
+
+     ---
+
+     4. Main Source Files and Their Purpose
+
+     Backend
+     ┌───────────────────────────────────────┬─────────────────────────────┐
+     │ File                                  │ Purpose                     │
+     ├───────────────────────────────────────┼─────────────────────────────┤
+     │ backend/app/main.py                   │ FastAPI app entry point.    │
+     │                                       │ Registers the API router    │
+     │                                       │ under /api prefix and runs  │
+     │                                       │ init_db() on startup        │
+     │                                       │ (creates pgvector extension │
+     │                                       │ + tables).                  │
+     │ backend/app/config.py                 │ Loads .env via              │
+     │                                       │ python-dotenv and exposes a │
+     │                                       │ frozen Settings dataclass   │
+     │                                       │ singleton with all config   │
+     │                                       │ values.                     │
+     │ backend/app/db.py                     │ Creates the async           │
+     │                                       │ SQLAlchemy engine and       │
+     │                                       │ session factory. init_db()  │
+     │                                       │ ensures the vector          │
+     │                                       │ extension exists and runs   │
+     │                                       │ CREATE TABLE for all        │
+     │                                       │ models.                     │
+     │ backend/app/models.py                 │ Four SQLAlchemy models:     │
+     │                                       │ Conversation (id, title,    │
+     │                                       │ data JSONB, created_at),    │
+     │                                       │ Message (role, content,     │
+     │                                       │ sources JSONB), Document    │
+     │                                       │ (title, source), Chunk      │
+     │                                       │ (content, embedding via     │
+     │                                       │ pgvector Vector()).         │
+     │ backend/app/schemas.py                │ Pydantic models for API     │
+     │                                       │ I/O: ChatRequest,           │
+     │                                       │ ChatResponse, RoleResponse, │
+     │                                       │ ChunkCitation,              │
+     │                                       │ ConversationSummary,        │
+     │                                       │ IngestRequest/IngestRespons │
+     │                                       │ e, etc.                     │
+     │ backend/app/orchestrator.py           │ The core routing logic.     │
+     │                                       │ Uses a detailed Chinese     │
+     │                                       │ system prompt to ask Qwen   │
+     │                                       │ which roles should respond. │
+     │                                       │ Parses comma-separated role │
+     │                                       │ IDs. Falls back to          │
+     │                                       │ customer_service on parse   │
+     │                                       │ failure. Runs selected      │
+     │                                       │ agents sequentially.        │
+     │ backend/app/agents/base.py            │ Abstract BaseRoleAgent      │
+     │                                       │ class and RoleResult        │
+     │                                       │ dataclass (role, content,   │
+     │                                       │ citations).                 │
+     │ backend/app/agents/customer_service.p │ Simple agent: sends user    │
+     │ y                                     │ message + history to Qwen   │
+     │                                       │ with a customer-service     │
+     │                                       │ system prompt. Returns no   │
+     │                                       │ citations.                  │
+     │ backend/app/agents/technical_support. │ RAG-enabled agent: calls    │
+     │ py                                    │ retrieve_chunks() first,    │
+     │                                       │ injects retrieved           │
+     │                                       │ knowledge-base snippets     │
+     │                                       │ into the system prompt,     │
+     │                                       │ then asks Qwen. Returns     │
+     │                                       │ citation metadata.          │
+     │ backend/app/agents/product_manager.py │ Simple agent: sends user    │
+     │                                       │ message + history to Qwen   │
+     │                                       │ with a product-manager      │
+     │                                       │ system prompt. Returns no   │
+     │                                       │ citations.                  │
+     │ backend/app/llm/qwen.py               │ QwenClient singleton        │
+     │                                       │ wrapping either ChatOpenAI  │
+     │                                       │ (if DASHSCOPE_HTTP_BASE_URL │
+     │                                       │ is set, using               │
+     │                                       │ OpenAI-compatible mode) or  │
+     │                                       │ ChatTongyi (native          │
+     │                                       │ DashScope). Also wraps      │
+     │                                       │ DashScope TextEmbedding for │
+     │                                       │ embeddings. Handles         │
+     │                                       │ DASHSCOPE_HTTP_BASE_URL env │
+     │                                       │ var carefully (pops before  │
+     │                                       │ import, restores after).    │
+     │ backend/app/rag/ingest.py             │ Accepts a list of           │
+     │                                       │ documents, chunks each via  │
+     │                                       │ chunk_text(), generates     │
+     │                                       │ embeddings via Qwen client, │
+     │                                       │ and writes Document + Chunk │
+     │                                       │ rows to PostgreSQL.         │
+     │ backend/app/rag/retriever.py          │ Embeds the query text, runs │
+     │                                       │ a cosine-distance search    │
+     │                                       │ against Chunk.embedding via │
+     │                                       │ pgvector, returns top-K     │
+     │                                       │ results filtered by         │
+     │                                       │ RAG_MIN_SIMILARITY.         │
+     │ backend/app/utils/chunking.py         │ Simple sliding-window text  │
+     │                                       │ splitter operating on       │
+     │                                       │ character count with        │
+     │                                       │ configurable overlap.       │
+     │ backend/app/api/routes.py             │ Five endpoints: GET         │
+     │                                       │ /health, POST /chat         │
+     │                                       │ (orchestrates multi-role    │
+     │                                       │ response, persists          │
+     │                                       │ messages), GET              │
+     │                                       │ /conversations (paginated   │
+     │                                       │ list with message counts),  │
+     │                                       │ GET /conversations/{id}     │
+     │                                       │ (full message history),     │
+     │                                       │ POST /ingest                │
+     │                                       │ (knowledge-base ingestion). │
+     │                                       │ Auto-generates conversation │
+     │                                       │ titles from the first 32    │
+     │                                       │ characters of the initial   │
+     │                                       │ message. Loads the last 10  │
+     │                                       │ messages as history         │
+     │                                       │ context.                    │
+     └───────────────────────────────────────┴─────────────────────────────┘
+     Frontend
+     ┌─────────────────────────────────────────┬────────────────────────────┐
+     │ File                                    │ Purpose                    │
+     ├─────────────────────────────────────────┼────────────────────────────┤
+     │ frontend/app/layout.tsx                 │ Root HTML layout. Sets     │
+     │                                         │ lang="zh-CN", loads Google │
+     │                                         │ Fonts Noto Sans SC (body)  │
+     │                                         │ and ZCOOL XiaoWei          │
+     │                                         │ (display) for Chinese text │
+     │                                         │ rendering.                 │
+     │ frontend/app/page.tsx                   │ The entire single-page     │
+     │                                         │ chat UI (~460 lines).      │
+     │                                         │ Implements: left sidebar   │
+     │                                         │ with conversation list     │
+     │                                         │ (create, select, show      │
+     │                                         │ message                    │
+     │                                         │ counts/timestamps); right  │
+     │                                         │ panel with chat messages,  │
+     │                                         │ color-coded role badges    │
+     │                                         │ (green=customer service,   │
+     │                                         │ amber=tech support,        │
+     │                                         │ blue=product manager),     │
+     │                                         │ collapsible citation       │
+     │                                         │ display with similarity    │
+     │                                         │ scores, textarea input     │
+     │                                         │ (Enter to send,            │
+     │                                         │ Shift+Enter for newline).  │
+     │                                         │ All state managed via      │
+     │                                         │ React useState/useEffect.  │
+     │                                         │ Fully Chinese UI.          │
+     │ frontend/app/globals.css                │ Tailwind v4 entry (@import │
+     │                                         │ "tailwindcss"), defines    │
+     │                                         │ CSS custom properties for  │
+     │                                         │ theming (warm beige        │
+     │                                         │ background, teal accent    │
+     │                                         │ color, panel/border/shadow │
+     │                                         │ tokens).                   │
+     │ frontend/app/api/_proxy.ts              │ Generic reverse-proxy      │
+     │                                         │ function that forwards     │
+     │                                         │ Next.js API route requests │
+     │                                         │ to the FastAPI backend at  │
+     │                                         │ BACKEND_BASE_URL (default  │
+     │                                         │ http://localhost:8000).    │
+     │                                         │ Strips hop-by-hop headers. │
+     │ frontend/app/api/chat/route.ts          │ Proxies POST /api/chat to  │
+     │                                         │ backend.                   │
+     │ frontend/app/api/ingest/route.ts        │ Proxies POST /api/ingest   │
+     │                                         │ to backend.                │
+     │ frontend/app/api/conversations/route.ts │ Proxies GET                │
+     │                                         │ /api/conversations to      │
+     │                                         │ backend.                   │
+     └─────────────────────────────────────────┴────────────────────────────┘
+     ---
+
+     5. Documentation
+
+     C:\project\pisxai\act01\README.md
+
+     A comprehensive 280-line Chinese-language README covering:
+     - Overall architecture diagram (browser -> Next.js -> FastAPI -> agents
+     -> PostgreSQL/pgvector)
+     - Full tech stack listing for both backend and frontend
+     - Data model descriptions (conversations, messages, documents, chunks)
+     - Implemented features: multi-role orchestration, role-specific system
+     prompts, RAG retrieval augmentation, conversation history management,
+     frontend UI details
+     - Complete directory structure tree
+     - Environment setup instructions (PostgreSQL+pgvector, DashScope API key,
+     Node.js)
+     - Startup commands for both backend (uvicorn app.main:app --reload) and
+     frontend (npm run dev)
+     - Usage walkthrough (ingesting knowledge base, starting conversations,
+     viewing history)
+     - HTTP API reference table with request/response examples
+     - Full configuration variable reference table (11 env vars)
+     - Current limitations: no streaming output, role routing depends on LLM
+     format, fixed 10-message history window, no auth/user system
+
+     C:\project\pisxai\act01\frontend\agents.md
+
+     A brief note warning that this version of Next.js (16) may have breaking
+     changes from earlier versions, advising to consult
+     node_modules/next/dist/docs/ before writing code.
+
+     ---
+
+     Summary
+
+     This is a well-structured, production-quality full-stack AI application.
+     The backend is a Python/FastAPI service that uses Alibaba Cloud's Qwen
+     LLM (via DashScope/LangChain) to power three specialized AI agent roles,
+     with RAG retrieval for the technical support role using pgvector. The
+     frontend is a Next.js 16 / React 19 / TypeScript application with a
+     polished Chinese-language chat interface styled with Tailwind CSS v4. The
+     two communicate via a Next.js API route proxy layer to avoid CORS issues.
+     The project has no test files, no CI/CD configuration, and no .gitignore
+     at the root (only in frontend/).
+
+ Thinking
+ │ The analysis is complete. Let me summarize the findings.
+ ▪ 项目分析报告：多角色智能问答 Agent 系统
+
+   这是一个全栈 AI 聊天应用，核心架构如下：
+
+   技术栈
+   ┌────────┬───────────────────────────────────────────────────────┐
+   │ 层     │ 技术                                                  │
+   ├────────┼───────────────────────────────────────────────────────┤
+   │ 前端   │ Next.js 16 + React 19 + TypeScript + Tailwind CSS v4  │
+   │ 后端   │ Python FastAPI + SQLAlchemy (async)                   │
+   │ LLM    │ 阿里云通义千问（Qwen），通过 DashScope/LangChain 调用 │
+   │ 数据库 │ PostgreSQL + pgvector（向量检索）                     │
+   └────────┴───────────────────────────────────────────────────────┘
+   核心功能
+
+   多角色智能路由 — orchestrator.py 用 LLM 自动判断用户问题应由哪个角色回答：
+     - 客服代理 — 通用客户问答
+     - 技术支持代理 — 带 RAG 检索增强，引用知识库文档
+     - 产品经理代理 — 产品规划类问题
+   RAG 知识库 — 文档分块 → 向量化存入 pgvector → 余弦相似度检索 →
+   注入技术支持回答
+   会话管理 — 支持多会话、历史消息（最近 10 条）、自动标题生成
+   前端 UI — 中文界面，左侧会话列表 +
+   右侧聊天面板，角色颜色区分，引用来源可折叠展示
+
+   项目结构
+    act01/
+    ├── backend/app/
+    │   ├── main.py            # FastAPI 入口
+    │   ├── orchestrator.py    # 角色路由核心逻辑
+    │   ├── agents/            # 三个角色 Agent
+    │   ├── rag/               # 文档摄入 + 向量检索
+    │   ├── llm/qwen.py        # Qwen LLM 封装
+    │   └── api/routes.py      # 5 个 API 端点
+    ├── frontend/app/
+    │   ├── page.tsx           # 单页聊天 UI（~460 行）
+    │   └── api/               # Next.js 代理层 → 后端
+    └── README.md              # 完整中文文档
+   当前不足
+
+   - 无流式输出（SSE/WebSocket）
+   - 角色路由依赖 LLM 格式输出，解析可能不稳定
+   - 历史消息固定 10 条窗口
+   - 无用户认证系统
+   - 无测试文件和 CI/CD 配置
+
+   整体是一个结构清晰、功能完整的项目，适合在此基础上迭代开发。需要我针对某个方
