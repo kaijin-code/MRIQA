@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { hashPassword } from "@/app/lib/crypto";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -20,10 +21,11 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
+      const hashedPassword = await hashPassword(password);
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
+        body: JSON.stringify({ username, email, password: hashedPassword }),
       });
 
       if (!res.ok) {
@@ -34,7 +36,7 @@ export default function RegisterPage() {
       const loginRes = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password: hashedPassword }),
       });
 
       if (!loginRes.ok) throw new Error("Auto-login failed");

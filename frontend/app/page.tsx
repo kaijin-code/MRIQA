@@ -21,6 +21,14 @@ type ConversationSummary = {
   message_count: number;
 };
 
+type DocumentSummary = {
+  id: string;
+  title?: string | null;
+  source?: string | null;
+  created_at: string;
+  chunk_count: number;
+};
+
 type ConversationHistory = {
   id: string;
   title?: string | null;
@@ -94,12 +102,17 @@ export default function Home() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [openCitations, setOpenCitations] = useState<Record<string, boolean>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [hasReceivedToken, setHasReceivedToken] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+
+  const isAdmin = user?.username === "admin";
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const streamingRef = useRef<{
@@ -116,6 +129,10 @@ export default function Home() {
   useEffect(() => {
     void loadConversations();
   }, []);
+
+  useEffect(() => {
+    if (isAdmin) void fetchDocuments();
+  }, [isAdmin]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -184,6 +201,48 @@ export default function Home() {
     }
   }
 
+  async function fetchDocuments(): Promise<void> {
+    setIsLoadingDocs(true);
+    try {
+      const response = await authFetch("/api/documents", { cache: "no-store" });
+      if (!response.ok) throw new Error("failed");
+      const data = (await response.json()) as { documents: DocumentSummary[] };
+      setDocuments(data.documents ?? []);
+    } catch {
+      // silently fail — panel will show empty state
+    } finally {
+      setIsLoadingDocs(false);
+    }
+  }
+
+  async function handleDownloadDocument(doc: DocumentSummary): Promise<void> {
+    try {
+      const response = await authFetch(`/api/documents/${doc.id}/download`);
+      if (!response.ok) throw new Error("failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = doc.source || doc.title || "document.txt";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      // download silently failed
+    }
+  }
+
+  async function handleDeleteDocument(doc: DocumentSummary): Promise<void> {
+    setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+    try {
+      await authFetch(`/api/documents/${doc.id}`, { method: "DELETE" });
+      void fetchDocuments();
+    } catch {
+      void fetchDocuments();
+    }
+  }
+
   function handleNewConversation(): void {
     setActiveId(null);
     setMessages([]);
@@ -195,9 +254,15 @@ export default function Home() {
     await loadConversation(conversationId);
   }
 
-  async function handleDeleteConversation(conversationId: string): Promise<void> {
-    if (!confirm("Delete this conversation? This action cannot be undone.")) return;
+  function requestDeleteConversation(conversationId: string): void {
+    setConfirmDeleteId(conversationId);
+  }
 
+  async function confirmDeleteConversation(): Promise<void> {
+    const conversationId = confirmDeleteId;
+    if (!conversationId) return;
+
+    setConfirmDeleteId(null);
     setDeletingId(conversationId);
     try {
       const response = await authFetch(`/api/conversations/${conversationId}`, {
@@ -223,24 +288,38 @@ export default function Home() {
     setIsUploading(true);
     setUploadMessage(null);
 
+    const ALLOWED_EXT = [".txt", ".md", ".markdown", ".text", ".docx", ".xlsx", ".pdf"];
+    const MAX_SIZE = 20 * 1024 * 1024;
+
     try {
-      const documents: Array<{ title: string; source: string; text: string }> = [];
+      const fileArray = Array.from(files);
 
-      for (const file of Array.from(files)) {
-        const text = await file.text();
-        if (!text.trim()) continue;
-        documents.push({ title: file.name, source: file.name, text: text.trim() });
+      for (const file of fileArray) {
+        const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+        if (!ALLOWED_EXT.includes(ext)) {
+          setUploadMessage({
+            type: "error",
+            text: `不支持的格式: ${ext}。支持: ${ALLOWED_EXT.join(", ")}`,
+          });
+          return;
+        }
+        if (file.size > MAX_SIZE) {
+          setUploadMessage({
+            type: "error",
+            text: `文件过大: ${file.name}（最大 20MB）`,
+          });
+          return;
+        }
       }
 
-      if (documents.length === 0) {
-        setUploadMessage({ type: "error", text: "所选文件为空或无法读取。" });
-        return;
+      const formData = new FormData();
+      for (const file of fileArray) {
+        formData.append("files", file);
       }
 
-      const response = await authFetch("/api/ingest", {
+      const response = await authFetch("/api/documents/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documents }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -253,12 +332,24 @@ export default function Home() {
         type: "success",
         text: `成功上传 ${result.documents} 个文档，生成 ${result.chunks} 个片段。`,
       });
+      void fetchDocuments();
     } catch (err) {
       const message = err instanceof Error ? err.message : "未知错误";
       setUploadMessage({ type: "error", text: `上传失败: ${message}` });
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleDeleteMessage(messageId: string): Promise<void> {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+    try {
+      await authFetch(`/api/messages/${messageId}`, { method: "DELETE" });
+    } catch {
+      setChatError("消息删除失败，请稍后重试。");
+      await loadConversations();
     }
   }
 
@@ -406,7 +497,7 @@ export default function Home() {
         <button
           type="button"
           onClick={logout}
-          className="rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-xs text-[var(--muted)] backdrop-blur transition hover:border-rose-300 hover:text-rose-600"
+          className="cursor-pointer rounded-full border border-[var(--border)] bg-white/80 px-3 py-1 text-xs text-[var(--muted)] backdrop-blur transition hover:border-rose-300 hover:text-rose-600"
         >
           Logout
         </button>
@@ -415,7 +506,7 @@ export default function Home() {
       <div className="pointer-events-none absolute right-0 top-40 h-80 w-80 rounded-full bg-amber-200/50 blur-[130px]" />
       <div className="pointer-events-none absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-sky-200/40 blur-[120px]" />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 py-6 md:flex-row md:items-stretch">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-6 md:flex-row md:items-stretch">
         <aside className="flex w-full flex-col rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow)] backdrop-blur md:w-72">
           <div className="flex items-start justify-between">
             <div>
@@ -427,17 +518,18 @@ export default function Home() {
             <button
               type="button"
               onClick={handleNewConversation}
-              className="rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              className="cursor-pointer rounded-full border border-[var(--border)] bg-white px-3 py-1 text-xs text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               新建会话
             </button>
           </div>
 
+          {isAdmin ? (
           <div className="mt-4 rounded-2xl border border-dashed border-[var(--border)] bg-white/50 p-3">
             <input
               ref={fileInputRef}
               type="file"
-              accept=".txt,.md,.markdown,.text"
+              accept=".txt,.md,.markdown,.text,.docx,.xlsx,.pdf"
               multiple
               className="hidden"
               onChange={(e) => void handleUploadFiles(e.target.files)}
@@ -446,7 +538,7 @@ export default function Home() {
               type="button"
               disabled={isUploading}
               onClick={() => fileInputRef.current?.click()}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--foreground)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50"
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--foreground)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-50"
             >
               {isUploading ? (
                 <>
@@ -465,7 +557,7 @@ export default function Home() {
               )}
             </button>
             <p className="mt-1.5 text-center text-[10px] text-[var(--muted)]">
-              支持 .txt / .md 格式
+              支持 .txt / .md / .docx / .xlsx / .pdf 格式
             </p>
             {uploadMessage ? (
               <div
@@ -486,6 +578,7 @@ export default function Home() {
               </div>
             ) : null}
           </div>
+          ) : null}
 
           <div className="mt-3 flex items-center justify-between text-xs text-[var(--muted)]">
             <span>会话列表</span>
@@ -513,7 +606,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => handleSelectConversation(conversation.id)}
-                      className={`flex-1 rounded-2xl border px-3 py-3 text-left transition ${
+                      className={`min-w-0 flex-1 rounded-2xl border px-3 py-3 text-left transition ${
                         isActive
                           ? "border-[var(--accent)] bg-white text-[var(--foreground)]"
                           : "border-transparent bg-white/50 text-[var(--muted)] hover:border-[var(--border)] hover:bg-white"
@@ -533,7 +626,7 @@ export default function Home() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => void handleDeleteConversation(conversation.id)}
+                      onClick={() => requestDeleteConversation(conversation.id)}
                       disabled={deletingId === conversation.id}
                       className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-100 hover:border-rose-300 disabled:opacity-50"
                     >
@@ -577,11 +670,22 @@ export default function Home() {
               const roleStyle = getRoleStyle(message.role);
               const hasCitations = (message.citations?.length ?? 0) > 0;
 
+              const isTemp = message.id.startsWith("local-") || message.id.startsWith("stream-");
+
               return (
                 <div
                   key={message.id}
-                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                  className={`group/msg flex items-start gap-2 ${isUser ? "justify-end" : "justify-start"}`}
                 >
+                  {!isUser && !isTemp ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteMessage(message.id)}
+                      className="mt-8 shrink-0 rounded-lg px-1.5 py-0.5 text-[10px] text-[var(--muted)] opacity-0 transition hover:bg-rose-50 hover:text-rose-600 group-hover/msg:opacity-100"
+                    >
+                      删除
+                    </button>
+                  ) : null}
                   <div
                     className={`max-w-[78%] rounded-3xl px-4 py-3 text-sm shadow-sm ${
                       isUser
@@ -640,6 +744,15 @@ export default function Home() {
                       </div>
                     ) : null}
                   </div>
+                  {isUser && !isTemp ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteMessage(message.id)}
+                      className="mt-8 shrink-0 rounded-lg px-1.5 py-0.5 text-[10px] text-[var(--muted)] opacity-0 transition hover:bg-rose-50 hover:text-rose-600 group-hover/msg:opacity-100"
+                    >
+                      删除
+                    </button>
+                  ) : null}
                 </div>
               );
             })}
@@ -693,7 +806,94 @@ export default function Home() {
             </div>
           </form>
         </section>
+
+        {isAdmin ? (
+          <aside className="hidden w-64 shrink-0 flex-col rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow)] backdrop-blur md:flex md:self-center md:max-h-[70vh]">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">知识库文档</p>
+              {isLoadingDocs ? (
+                <span className="text-xs text-[var(--muted)]">加载中...</span>
+              ) : (
+                <span className="text-xs text-[var(--muted)]">{documents.length} 个</span>
+              )}
+            </div>
+
+            <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+              {documents.length === 0 && !isLoadingDocs ? (
+                <div className="rounded-2xl border border-dashed border-[var(--border)] px-3 py-4 text-xs text-[var(--muted)]">
+                  暂无文档，请先上传。
+                </div>
+              ) : null}
+
+              {documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-white/50 px-3 py-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-[var(--foreground)]">
+                      {doc.title || doc.source || "未命名"}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-[var(--muted)]">
+                      {formatTime(doc.created_at)} · {doc.chunk_count} 片段
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleDownloadDocument(doc)}
+                    className="shrink-0 cursor-pointer rounded-lg border border-[var(--border)] bg-white p-1.5 text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                    title="下载文档"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteDocument(doc)}
+                    className="shrink-0 cursor-pointer rounded-lg border border-rose-200 bg-rose-50 p-1.5 text-rose-500 transition hover:border-rose-300 hover:bg-rose-100"
+                    title="删除文档"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </aside>
+        ) : null}
       </div>
+
+      {confirmDeleteId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-[var(--foreground)]">确认删除</h3>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              删除后该会话的所有消息将无法恢复，确定要删除吗？
+            </p>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteId(null)}
+                className="rounded-full border border-[var(--border)] bg-white px-4 py-1.5 text-sm text-[var(--muted)] transition hover:bg-slate-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteConversation()}
+                className="rounded-full bg-rose-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-rose-700"
+              >
+                删除
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { hashPassword } from "@/app/lib/crypto";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,10 +20,11 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
+      const hashedPassword = await hashPassword(password);
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password: hashedPassword }),
       });
 
       if (!res.ok) {
