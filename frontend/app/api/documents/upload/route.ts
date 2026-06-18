@@ -1,4 +1,4 @@
-import { proxyRequest } from "../../../_proxy";
+import { proxyRequest } from "../../_proxy";
 
 export async function POST(request: Request): Promise<Response> {
   return proxyRequest(request, { path: "/api/documents/upload" });
