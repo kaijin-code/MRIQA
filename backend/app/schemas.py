@@ -77,15 +77,27 @@ class IngestResponse(BaseModel):
     chunks: int
 
 
+class DocumentSummary(BaseModel):
+    id: UUID
+    title: str | None = None
+    source: str | None = None
+    created_at: datetime
+    chunk_count: int
+
+
+class DocumentListResponse(BaseModel):
+    documents: list[DocumentSummary]
+
+
 class UserRegister(BaseModel):
     username: str = Field(..., min_length=3, max_length=100)
     email: str = Field(..., min_length=5, max_length=255)
-    password: str = Field(..., min_length=6, max_length=128)
+    password: str = Field(..., min_length=64, max_length=64)
 
 
 class UserLogin(BaseModel):
     username: str = Field(..., min_length=1)
-    password: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=64, max_length=64)
 
 
 class TokenResponse(BaseModel):

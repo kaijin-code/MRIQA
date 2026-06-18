@@ -92,7 +92,9 @@ FastAPI 后端
 
 ### RAG 检索增强
 
-- `/api/ingest` 接收文档列表，按 `CHUNK_SIZE` / `CHUNK_OVERLAP` 切片
+- `/api/ingest` 接收文档列表，根据文档类型智能切片：
+  - **Markdown 文档**（`.md` / `.markdown`）：按 ATX 标题层级拆分 section，代码块（围栏语法）作为不可分割单元保护完整性，小 section 自动合并，超长 section 依次按段落 → 句子 → 字符兜底
+  - **纯文本文档**（`.txt` 等）：优先按段落（双换行）拆分，小段落自动合并至 `CHUNK_SIZE` 上限，超长段落按中英文句子边界拆分，最后按字符数兜底（`CHUNK_OVERLAP` 仅在字符兜底时生效）
 - 调用 DashScope 文本向量模型生成 embedding 并写入 pgvector
 - 技术支持 Agent 在每次回答前用 cosine 距离召回 Top-K（默认 5），低于 `RAG_MIN_SIMILARITY`（默认 0.2）的片段会被过滤
 - 引用信息（document_id、chunk_id、source、score）随回复返回，前端可展开查看
@@ -143,7 +145,7 @@ act01/
 │  │  │  ├─ ingest.py           文档切片 + embedding 入库
 │  │  │  └─ retriever.py        向量检索 Top-K
 │  │  ├─ llm/qwen.py            DashScope / ChatTongyi 客户端封装（含 chat_stream）
-│  │  ├─ utils/chunking.py      简单的滑动窗口切片
+│  │  ├─ utils/chunking.py      文档智能切片（Markdown 标题感知 / 段落句子边界 / 字符兜底）
 │  │  └─ api/
 │  │     ├─ routes.py           /health /chat /chat/stream /ingest /conversations
 │  │     └─ auth_routes.py      /auth/register /auth/login /auth/me
@@ -312,8 +314,8 @@ event: done        data: {}
 | `QWEN_EMBEDDING_MODEL` | `text-embedding-v3` | 向量模型 |
 | `RAG_TOP_K` | `5` | 向量召回数量 |
 | `RAG_MIN_SIMILARITY` | `0.2` | 相似度阈值 |
-| `CHUNK_SIZE` | `800` | 文档切片大小（字符） |
-| `CHUNK_OVERLAP` | `100` | 切片重叠 |
+| `CHUNK_SIZE` | `800` | 文档切片大小上限（字符数），段落/句子优先在此范围内合并 |
+| `CHUNK_OVERLAP` | `100` | 切片重叠字符数，仅在字符级兜底切分时生效 |
 | `JWT_SECRET_KEY` | `change-me-in-production` | JWT 签名密钥（生产环境务必修改） |
 | `JWT_ALGORITHM` | `HS256` | JWT 签名算法 |
 | `JWT_EXPIRE_MINUTES` | `1440` | JWT 过期时间（分钟，默认 24 小时） |

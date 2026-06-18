@@ -41,6 +41,7 @@ class Conversation(Base):
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     user: Mapped["User"] = relationship("User", back_populates="conversations")
     messages: Mapped[list["Message"]] = relationship(
@@ -52,15 +53,16 @@ class Message(Base):
     __tablename__ = "messages"
 
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
-    conversation_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE")
+    conversation_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True
     )
     role: Mapped[str] = mapped_column(String(50))
     content: Mapped[str] = mapped_column(Text)
     sources: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
-    conversation: Mapped[Conversation] = relationship("Conversation", back_populates="messages")
+    conversation: Mapped[Conversation | None] = relationship("Conversation", back_populates="messages")
 
 
 class Document(Base):

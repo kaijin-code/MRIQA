@@ -10,3 +10,4 @@ dist/
 build/
 *.log
 .DS_Store
+2026-*.txt

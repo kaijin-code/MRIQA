@@ -8,7 +8,7 @@ from ..config import get_settings
 from ..llm.qwen import get_qwen_client
 from ..models import Chunk, Document
 from ..schemas import DocumentInput
-from ..utils.chunking import chunk_text
+from ..utils.chunking import chunk_document
 
 
 async def ingest_documents(
@@ -26,7 +26,7 @@ async def ingest_documents(
         doc_row = Document(id=doc_id, title=doc.title, source=doc.source)
         session.add(doc_row)
 
-        chunks = chunk_text(doc.text, settings.chunk_size, settings.chunk_overlap)
+        chunks = chunk_document(doc.text, doc.source, settings.chunk_size, settings.chunk_overlap)
         if not chunks:
             continue
 

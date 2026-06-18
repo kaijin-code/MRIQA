@@ -11,9 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import get_current_user
 from ..db import get_session
-from ..models import Conversation, Message, User
+from ..models import Conversation, Message, User, _utcnow
 from ..orchestrator import run_orchestrator, run_orchestrator_stream
-from ..rag.ingest import ingest_documents
 from ..schemas import (
     ChatRequest,
     ChatResponse,
@@ -21,8 +20,6 @@ from ..schemas import (
     ConversationHistoryResponse,
     ConversationListResponse,
     ConversationSummary,
-    IngestRequest,
-    IngestResponse,
     MessageItem,
     RoleResponse,
 )
@@ -64,7 +61,7 @@ async def _get_conversation(
         return conversation
 
     conversation = await session.get(Conversation, conversation_id)
-    if conversation is None:
+    if conversation is None or conversation.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     if conversation.user_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this conversation")
@@ -78,7 +75,10 @@ async def _load_history(
 ) -> list[dict[str, Any]]:
     stmt = (
         select(Message)
-        .where(Message.conversation_id == conversation_id)
+        .where(
+            Message.conversation_id == conversation_id,
+            Message.deleted_at.is_(None),
+        )
         .order_by(Message.created_at.desc())
         .limit(limit)
     )
@@ -86,16 +86,6 @@ async def _load_history(
     rows.reverse()
 
     return [{"role": row.role, "content": row.content} for row in rows]
-
-
-@router.post("/ingest", response_model=IngestResponse)
-async def ingest(
-    request: IngestRequest,
-    session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> IngestResponse:
-    docs, chunks = await ingest_documents(request.documents, session)
-    return IngestResponse(documents=docs, chunks=chunks)
 
 
 @router.get("/conversations", response_model=ConversationListResponse)
@@ -111,8 +101,15 @@ async def list_conversations(
             func.count(Message.id).label("message_count"),
             func.max(Message.created_at).label("last_message_at"),
         )
-        .outerjoin(Message, Message.conversation_id == Conversation.id)
-        .where(Conversation.user_id == current_user.id)
+        .outerjoin(
+            Message,
+            (Message.conversation_id == Conversation.id)
+            & (Message.deleted_at.is_(None)),
+        )
+        .where(
+            Conversation.user_id == current_user.id,
+            Conversation.deleted_at.is_(None),
+        )
         .group_by(Conversation.id)
         .order_by(Conversation.created_at.desc())
         .limit(limit)
@@ -144,12 +141,15 @@ async def get_conversation_history(
     current_user: User = Depends(get_current_user),
 ) -> ConversationHistoryResponse:
     conversation = await session.get(Conversation, conversation_id)
-    if conversation is None or conversation.user_id != current_user.id:
+    if conversation is None or conversation.deleted_at is not None or conversation.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     stmt = (
         select(Message)
-        .where(Message.conversation_id == conversation_id)
+        .where(
+            Message.conversation_id == conversation_id,
+            Message.deleted_at.is_(None),
+        )
         .order_by(Message.created_at.asc())
         .limit(limit)
         .offset(offset)
@@ -298,9 +298,36 @@ async def delete_conversation(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     conversation = await session.get(Conversation, conversation_id)
-    if conversation is None or conversation.user_id != current_user.id:
+    if conversation is None or conversation.deleted_at is not None or conversation.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    await session.delete(conversation)
+    now = _utcnow()
+    conversation.deleted_at = now
+
+    stmt = select(Message).where(Message.conversation_id == conversation_id)
+    messages = (await session.execute(stmt)).scalars().all()
+    for message in messages:
+        message.conversation_id = None
+
+    await session.commit()
+    return Response(status_code=204)
+
+
+@router.delete("/messages/{message_id}", status_code=204)
+async def delete_message(
+    message_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    message = await session.get(Message, message_id)
+    if message is None or message.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    if message.conversation_id is not None:
+        conversation = await session.get(Conversation, message.conversation_id)
+        if conversation is None or conversation.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Message not found")
+
+    message.deleted_at = _utcnow()
     await session.commit()
     return Response(status_code=204)
