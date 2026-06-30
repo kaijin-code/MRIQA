@@ -8,6 +8,7 @@ from ..auth import (
     create_access_token,
     get_current_user,
     hash_password,
+    sha256_hex,
     verify_password,
 )
 from ..db import get_session
@@ -57,7 +58,18 @@ async def login(
         select(User).where(User.username == body.username)
     )
     user = result.scalars().first()
-    if user is None or not verify_password(body.password, user.hashed_password):
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+        )
+
+    password_matches = verify_password(body.password, user.hashed_password)
+    if not password_matches:
+        legacy_password = sha256_hex(body.password)
+        password_matches = verify_password(legacy_password, user.hashed_password)
+
+    if not password_matches:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",

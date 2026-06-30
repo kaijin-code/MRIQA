@@ -5,13 +5,13 @@ import "./globals.css";
 
 const bodyFont = Noto_Sans_SC({
   variable: "--font-body",
-  subsets: ["chinese-simplified"],
+  subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "700"],
 });
 
 const displayFont = ZCOOL_XiaoWei({
   variable: "--font-display",
-  subsets: ["chinese-simplified"],
+  subsets: ["latin"],
   weight: "400",
 });
 

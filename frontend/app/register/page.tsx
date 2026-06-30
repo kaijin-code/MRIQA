@@ -2,12 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
-import { hashPassword } from "@/app/lib/crypto";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -15,17 +12,25 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  async function sha256Hex(value: string): Promise<string> {
+    const buf = new TextEncoder().encode(value);
+    const hash = await crypto.subtle.digest("SHA-256", buf);
+    return Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
 
     try {
-      const hashedPassword = await hashPassword(password);
+      const passwordDigest = await sha256Hex(password);
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password: hashedPassword }),
+        body: JSON.stringify({ username, email, password: passwordDigest }),
       });
 
       if (!res.ok) {
@@ -36,14 +41,14 @@ export default function RegisterPage() {
       const loginRes = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password: hashedPassword }),
+        body: JSON.stringify({ username, password: passwordDigest }),
       });
 
       if (!loginRes.ok) throw new Error("Auto-login failed");
 
       const loginData = await loginRes.json();
       login(loginData.access_token, loginData.user);
-      router.push("/");
+      window.location.replace("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {

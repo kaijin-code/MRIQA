@@ -2,17 +2,22 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
-import { hashPassword } from "@/app/lib/crypto";
 
 export default function LoginPage() {
-  const router = useRouter();
   const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function sha256Hex(value: string): Promise<string> {
+    const buf = new TextEncoder().encode(value);
+    const hash = await crypto.subtle.digest("SHA-256", buf);
+    return Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,11 +25,11 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const hashedPassword = await hashPassword(password);
+      const passwordDigest = await sha256Hex(password);
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password: hashedPassword }),
+        body: JSON.stringify({ username, password: passwordDigest }),
       });
 
       if (!res.ok) {
@@ -34,7 +39,7 @@ export default function LoginPage() {
 
       const data = await res.json();
       login(data.access_token, data.user);
-      router.push("/");
+      window.location.replace("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
