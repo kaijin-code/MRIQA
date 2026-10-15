@@ -36,11 +36,15 @@ _ROUTER_SYSTEM_PROMPT = """你是一个多角色协作系统的路由器，需�
 
 async def _select_roles(message: str, history: list[dict[str, Any]] | None) -> list[str]:
     qwen = get_qwen_client()
-    decision: RouteDecision = await qwen.chat_structured(
-        _ROUTER_SYSTEM_PROMPT, message, RouteDecision
-    )
-    logger.info("Router decision: message=%r decision=%s", message, decision.model_dump_json())
-    return decision.roles or [ROLE_CUSTOMER]
+    try:
+        decision: RouteDecision = await qwen.chat_structured(
+            _ROUTER_SYSTEM_PROMPT, message, RouteDecision
+        )
+        logger.info("Router decision: message=%r decision=%s", message, decision.model_dump_json())
+        return decision.roles or [ROLE_CUSTOMER]
+    except Exception as exc:
+        logger.warning("Router failed (%s), falling back to %s", exc, ROLE_CUSTOMER)
+        return [ROLE_CUSTOMER]
 
 
 async def run_orchestrator(

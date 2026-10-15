@@ -7,7 +7,7 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...auth import get_current_user
+from ...auth import require_admin
 from ...db import get_session
 from ...models import Chunk, Document, User
 from ...rag.ingest import ingest_documents
@@ -27,7 +27,7 @@ documents_router = APIRouter(prefix="/documents", tags=["documents"])
 async def ingest(
     request: IngestRequest,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> IngestResponse:
     docs, chunks = await ingest_documents(request.documents, session)
     return IngestResponse(documents=docs, chunks=chunks)
@@ -40,7 +40,7 @@ _MAX_FILE_SIZE = 20 * 1024 * 1024
 async def upload(
     files: list[UploadFile] = File(...),
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> IngestResponse:
     documents: list[DocumentInput] = []
 
@@ -83,7 +83,7 @@ async def upload(
 async def list_documents(
     limit: int = Query(100, ge=1, le=500),
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> DocumentListResponse:
     stmt = (
         select(
@@ -116,7 +116,7 @@ async def list_documents(
 async def download_document(
     document_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> Response:
     document = await session.get(Document, document_id)
     if document is None:
@@ -143,7 +143,7 @@ async def download_document(
 async def delete_document(
     document_id: UUID,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> Response:
     document = await session.get(Document, document_id)
     if document is None:

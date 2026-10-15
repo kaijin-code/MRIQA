@@ -111,4 +111,5 @@ class UserInfo(BaseModel):
     id: UUID
     username: str
     email: str
+    is_admin: bool = False
     created_at: datetime

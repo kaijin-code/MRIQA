@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 from uuid import UUID
@@ -197,7 +198,12 @@ async def chat(
     )
     await session.flush()
 
-    results = await run_orchestrator(request.message, history, session)
+    try:
+        results = await run_orchestrator(request.message, history, session)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="回答生成失败，请稍后重试") from exc
 
     responses: list[RoleResponse] = []
     for result in results:
@@ -275,6 +281,13 @@ async def chat_stream(
                 yield f"event: {event_type}\ndata: {json.dumps(event_data, ensure_ascii=False)}\n\n"
 
             await session.commit()
+        except asyncio.CancelledError:
+            # 客户端断开：把已 flush 的助手消息落库后再终止
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+            raise
         except Exception as exc:
             error_data = json.dumps({"error": str(exc)}, ensure_ascii=False)
             yield f"event: error\ndata: {error_data}\n\n"

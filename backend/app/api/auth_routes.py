@@ -45,6 +45,7 @@ async def register(
         id=user.id,
         username=user.username,
         email=user.email,
+        is_admin=user.is_admin,
         created_at=user.created_at,
     )
 
@@ -83,6 +84,7 @@ async def login(
             id=user.id,
             username=user.username,
             email=user.email,
+            is_admin=user.is_admin,
             created_at=user.created_at,
         ),
     )
@@ -94,5 +96,6 @@ async def me(current_user: User = Depends(get_current_user)) -> UserInfo:
         id=current_user.id,
         username=current_user.username,
         email=current_user.email,
+        is_admin=current_user.is_admin,
         created_at=current_user.created_at,
     )

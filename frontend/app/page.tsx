@@ -112,7 +112,7 @@ export default function Home() {
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
 
-  const isAdmin = user?.username === "admin";
+  const isAdmin = user?.is_admin === true;
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const streamingRef = useRef<{
@@ -120,6 +120,7 @@ export default function Home() {
     currentMsgId: string | null;
     accumulated: string;
   }>({ currentRoleId: null, currentMsgId: null, accumulated: "" });
+  const abortRef = useRef<AbortController | null>(null);
 
   const activeConversation = useMemo(
     () => conversations.find((item) => item.id === activeId) ?? null,
@@ -143,6 +144,10 @@ export default function Home() {
     const timer = setTimeout(() => setUploadMessage(null), 5000);
     return () => clearTimeout(timer);
   }, [uploadMessage]);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   const canSend = draft.trim().length > 0 && !isSending;
 
@@ -244,12 +249,14 @@ export default function Home() {
   }
 
   function handleNewConversation(): void {
+    abortRef.current?.abort();
     setActiveId(null);
     setMessages([]);
     setChatError(null);
   }
 
   async function handleSelectConversation(conversationId: string): Promise<void> {
+    abortRef.current?.abort();
     setActiveId(conversationId);
     await loadConversation(conversationId);
   }
@@ -373,6 +380,10 @@ export default function Home() {
     setIsSending(true);
 
     try {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       const response = await authFetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -381,6 +392,7 @@ export default function Home() {
           message: content,
           metadata: null,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) throw new Error("failed");
@@ -389,6 +401,7 @@ export default function Home() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let currentEvent = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -398,7 +411,6 @@ export default function Home() {
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
 
-        let currentEvent = "";
         for (const line of lines) {
           if (line.startsWith("event: ")) {
             currentEvent = line.slice(7).trim();
@@ -410,12 +422,14 @@ export default function Home() {
             } catch {
               // skip malformed events
             }
+            currentEvent = "";
           }
         }
       }
 
       await loadConversations();
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       setChatError("发送失败，请稍后重试。");
     } finally {
       setIsSending(false);
@@ -473,6 +487,13 @@ export default function Home() {
         break;
       }
       case "role_end": {
+        const content = data.content as string | undefined;
+        const msgId = streamingRef.current.currentMsgId;
+        if (msgId && content) {
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === msgId ? { ...msg, content } : msg))
+          );
+        }
         streamingRef.current = { currentRoleId: null, currentMsgId: null, accumulated: "" };
         break;
       }

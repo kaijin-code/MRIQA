@@ -41,7 +41,7 @@ FastAPI 后端
 - LLM：阿里云通义千问 DashScope（聊天模型 `qwen3.6-plus`，向量模型 `text-embedding-v3`）
 - 数据库：PostgreSQL + pgvector 扩展
 - ORM：SQLAlchemy 2.x（async）+ asyncpg
-- 鉴权：python-jose（JWT）+ passlib（bcrypt 密码哈希）
+- 鉴权：python-jose（JWT）+ bcrypt（密码哈希）
 - 配置：python-dotenv + dataclass Settings
 
 ### 前端技术栈
@@ -55,7 +55,7 @@ FastAPI 后端
 
 ### 数据模型
 
-- `users`：用户表（id、username、email、hashed_password、created_at）
+- `users`：用户表（id、username、email、hashed_password、is_admin、created_at）
 - `conversations`：会话主表（id、user_id FK -> users、title、data JSONB、created_at）
 - `messages`：消息明细（role、content、sources JSONB）
 - `documents`：知识库文档元信息
@@ -70,8 +70,9 @@ FastAPI 后端
 - `POST /api/auth/register` 注册（username + email + password，bcrypt 哈希）
 - `POST /api/auth/login` 登录，返回 JWT Token（默认 24 小时过期）
 - `GET /api/auth/me` 获取当前用户信息
-- 所有对话、聊天、知识库灌入接口均需携带 `Authorization: Bearer <token>`
+- 所有对话、聊天接口均需携带 `Authorization: Bearer <token>`
 - 会话按 `user_id` 归属，用户只能访问自己的会话
+- 知识库文档为管理员专属：仅 `is_admin` 用户可上传 / 下载 / 删除 / 查看文档，普通用户仅通过 RAG 检索间接消费知识库（`admin` 用户名在启动时自动授予管理员）
 
 ### 多角色协作
 
@@ -81,7 +82,7 @@ FastAPI 后端
   - 产品策略类 -> 产品经理
   - 跨领域问题可组合多角色
   - 模糊 / 闲聊 -> 降级到客服
-- 解析失败或为空时降级到客服角色
+- 解析失败或为空时降级到客服角色（LLM 调用异常同样降级，保证可用性）
 - 命中的角色按顺序串行生成回复，统一聚合返回
 
 ### 角色定义（system prompt）
@@ -92,7 +93,7 @@ FastAPI 后端
 
 ### RAG 检索增强
 
-- `/api/ingest` 接收文档列表，根据文档类型智能切片：
+- `POST /api/documents/ingest` 接收文档列表，根据文档类型智能切片：
   - **Markdown 文档**（`.md` / `.markdown`）：按 ATX 标题层级拆分 section，代码块（围栏语法）作为不可分割单元保护完整性，小 section 自动合并，超长 section 依次按段落 → 句子 → 字符兜底
   - **纯文本文档**（`.txt` 等）：优先按段落（双换行）拆分，小段落自动合并至 `CHUNK_SIZE` 上限，超长段落按中英文句子边界拆分，最后按字符数兜底（`CHUNK_OVERLAP` 仅在字符兜底时生效）
 - 调用 DashScope 文本向量模型生成 embedding 并写入 pgvector
@@ -130,32 +131,36 @@ FastAPI 后端
 ## 三、目录结构
 
 ```
-act01/
+MRIQA/
+├─ LICENSE                       MIT 许可证
+├─ docker-compose.yml            本地 PostgreSQL + pgvector
 ├─ backend/
 │  ├─ app/
 │  │  ├─ main.py                FastAPI 入口，启动时初始化数据库 + CORS
 │  │  ├─ config.py              环境变量与默认值（含 JWT 配置）
-│  │  ├─ db.py                  async engine / session / init_db
+│  │  ├─ db.py                  async engine / session / init_db（含增量迁移）
 │  │  ├─ models.py              SQLAlchemy 模型（users / conversations / messages / documents / chunks）
 │  │  ├─ schemas.py             Pydantic 请求 / 响应模型
-│  │  ├─ auth.py                JWT 生成与验证、密码哈希、get_current_user 依赖
-│  │  ├─ orchestrator.py        角色调度器（含流式 run_orchestrator_stream）
+│  │  ├─ auth.py                JWT 生成与验证、密码哈希、get_current_user / require_admin 依赖
+│  │  ├─ orchestrator.py        角色调度器（含流式 run_orchestrator_stream、路由降级容错）
 │  │  ├─ agents/                三个角色 Agent 实现（含 respond_stream）
 │  │  ├─ rag/
 │  │  │  ├─ ingest.py           文档切片 + embedding 入库
 │  │  │  └─ retriever.py        向量检索 Top-K
-│  │  ├─ llm/qwen.py            DashScope / ChatTongyi 客户端封装（含 chat_stream）
-│  │  ├─ utils/chunking.py      文档智能切片（Markdown 标题感知 / 段落句子边界 / 字符兜底）
+│  │  ├─ llm/qwen.py            通义千问客户端封装（DashScope 原生 / OpenAI 兼容双模式）
+│  │  ├─ utils/                 文档抽取（extractors）与智能切片（chunking）
 │  │  └─ api/
-│  │     ├─ routes.py           /health /chat /chat/stream /ingest /conversations
-│  │     └─ auth_routes.py      /auth/register /auth/login /auth/me
-│  ├─ requirements.txt
+│  │     ├─ routes.py           /health /chat /chat/stream /conversations
+│  │     ├─ auth_routes.py      /auth/register /auth/login /auth/me
+│  │     └─ documents/routes.py /documents/ingest /upload /list /download /delete（仅 admin）
+│  ├─ requirements.txt          依赖声明（>= 约束）
+│  ├─ requirements.lock.txt     依赖锁定（== 精确版本）
 │  └─ .env.example
 └─ frontend/
    ├─ app/
    │  ├─ layout.tsx             根布局 + 中文字体
    │  ├─ providers.tsx          全局 Provider（AuthProvider）
-   │  ├─ page.tsx               主对话界面（含 SSE 流式渲染）
+   │  ├─ page.tsx               主对话界面（含 SSE 流式渲染、admin 文档面板）
    │  ├─ login/page.tsx         登录页
    │  ├─ register/page.tsx      注册页
    │  ├─ contexts/
@@ -171,7 +176,9 @@ act01/
    │     ├─ auth/register/route.ts
    │     ├─ auth/me/route.ts
    │     └─ conversations/...
+   ├─ proxy.ts                  路由守卫（未登录重定向 /login）
    ├─ package.json
+   ├─ .env.local.example
    └─ next.config.ts
 ```
 
@@ -181,13 +188,19 @@ act01/
 
 ### 1. PostgreSQL + pgvector
 
-需要一个开启了 `vector` 扩展的 PostgreSQL 实例，默认连接：
+需要一个开启了 `vector` 扩展的 PostgreSQL 实例。项目根目录提供 `docker-compose.yml`，可一键启动本地数据库：
+
+```cmd
+docker compose up -d
+```
+
+默认连接（`.env.example` 中的默认值，与 compose 配置一致）：
 
 ```
-postgresql+asyncpg://postgres:123456@192.168.10.174:5432/agentdb
+postgresql+asyncpg://postgres:123456@localhost:5432/agentdb
 ```
 
-可在 `backend/.env` 中通过 `DATABASE_URL` 覆盖。后端启动时会自动执行 `CREATE EXTENSION IF NOT EXISTS vector` 和建表，无需手动迁移。
+也可在 `backend/.env` 中通过 `DATABASE_URL` 指向任意已有实例（如局域网数据库）。后端启动时会自动执行 `CREATE EXTENSION IF NOT EXISTS vector`、建表以及增量列迁移（含 `users.is_admin`），无需手动迁移。
 
 ### 2. 通义千问 API Key
 
@@ -211,7 +224,8 @@ postgresql+asyncpg://postgres:123456@192.168.10.174:5432/agentdb
 cd backend
 python -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt
+:: 精确复现环境用 requirements.lock.txt，按约束安装最新版用 requirements.txt
+pip install -r requirements.lock.txt
 copy .env.example .env
 :: 编辑 .env，填入 DASHSCOPE_API_KEY、DATABASE_URL，可选设置 JWT_SECRET_KEY
 uvicorn app.main:app --reload
@@ -237,18 +251,20 @@ npm run dev
 
 打开前端首页，首次使用需先注册账号（用户名 + 邮箱 + 密码），注册成功后自动登录。已有账号可直接登录。
 
-### 2. （可选）灌入知识库
+### 2.（管理员）管理知识库
 
-技术支持角色会基于知识库回答，建议先调用 `/api/ingest` 灌入文档（需携带 JWT Token）：
+技术支持角色会基于知识库回答。知识库文档为**管理员专属**：以 `admin` 用户登录前端后，右侧会出现知识库面板，支持拖拽 / 选择上传 txt / md / docx / xlsx / pdf 文档（单个 ≤ 20MB）。
+
+也可调用接口灌入纯文本（需 admin 用户的 JWT Token）：
 
 ```cmd
-curl -X POST http://localhost:8000/api/ingest ^
+curl -X POST http://localhost:8000/api/documents/ingest ^
   -H "Content-Type: application/json" ^
-  -H "Authorization: Bearer <your-token>" ^
+  -H "Authorization: Bearer <admin-token>" ^
   -d "{\"documents\":[{\"title\":\"产品手册\",\"source\":\"manual.md\",\"text\":\"......\"}]}"
 ```
 
-返回 `{ "documents": 1, "chunks": N }` 表示入库成功。
+返回 `{ "documents": 1, "chunks": N }` 表示入库成功。普通用户请求文档接口会返回 403。
 
 ### 3. 发起对话
 
@@ -286,7 +302,11 @@ curl -X POST http://localhost:8000/api/ingest ^
 | GET | `/api/conversations` | JWT | 当前用户的会话列表（支持 `limit`、`offset`） |
 | GET | `/api/conversations/{id}` | JWT | 单个会话的完整消息 |
 | DELETE | `/api/conversations/{id}` | JWT | 删除会话（级联删除消息） |
-| POST | `/api/ingest` | JWT | 批量灌入知识库文档 |
+| POST | `/api/documents/ingest` | JWT + Admin | 批量灌入知识库文档（JSON 文本） |
+| POST | `/api/documents/upload` | JWT + Admin | 多文件上传（txt/md/docx/xlsx/pdf，≤20MB） |
+| GET | `/api/documents` | JWT + Admin | 知识库文档列表（含切片数） |
+| GET | `/api/documents/{id}/download` | JWT + Admin | 按切片重组下载文档 |
+| DELETE | `/api/documents/{id}` | JWT + Admin | 删除文档及其切片 |
 
 `/api/chat/stream` SSE 事件序列：
 
@@ -307,7 +327,7 @@ event: done        data: {}
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `DATABASE_URL` | `postgresql+asyncpg://postgres:123456@192.168.10.174:5432/agentdb` | 数据库连接串 |
+| `DATABASE_URL` | `postgresql+asyncpg://postgres:123456@localhost:5432/agentdb` | 数据库连接串（与根目录 docker-compose.yml 一致） |
 | `DASHSCOPE_API_KEY` | 空 | 通义千问 API Key |
 | `DASHSCOPE_HTTP_BASE_URL` | 空 | 兼容模式端点（设置后走 OpenAI 兼容协议） |
 | `QWEN_MODEL` | `qwen3.6-plus` | 聊天模型 |
@@ -331,3 +351,9 @@ event: done        data: {}
 - 角色调度依赖 LLM 的输出格式，极端情况下会回退到客服单角色
 - 历史上下文窗口固定为最近 10 条，未做 token 级裁剪
 - 角色间无交互式协作（如客服追问技术支持的结论），各角色独立生成回复
+
+---
+
+## 十、开源许可
+
+本项目基于 [MIT License](LICENSE) 开源。

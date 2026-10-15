@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend
 
-## Getting Started
+Next.js 16（App Router）前端：多角色智能问答对话界面。
 
-First, run the development server:
+## 功能
 
-```bash
+- 登录 / 注册（注册后自动登录），JWT 存储于 localStorage，全局 AuthContext 管理登录态
+- 会话侧栏：新建、切换、删除确认，显示消息数与最近时间
+- 多角色消息气泡（客服 / 技术支持 / 产品经理 彩色徽章），SSE 流式逐字渲染
+- 引用来源折叠面板，显示来源文件名与相似度
+- 管理员专属知识库面板：拖拽 / 选择上传 txt / md / docx / xlsx / pdf（≤20MB）、下载、删除
+- `proxy.ts` 路由守卫：未登录访问 `/` 重定向到 `/login`
+- 全中文 UI，暖色调设计，自适应桌面与移动布局
+
+## Quick start
+
+```cmd
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+默认访问 `http://localhost:3000`。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 环境变量
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+复制 `.env.local.example` 为 `.env.local` 按需修改：
 
-## Learn More
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `BACKEND_BASE_URL` | `http://localhost:8000` | 后端地址（BFF 代理转发目标） |
 
-To learn more about Next.js, take a look at the following resources:
+## 技术栈
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Next.js 16（App Router、Turbopack）
+- React 19 + TypeScript 5
+- Tailwind CSS v4（PostCSS 插件）
+- 中文字体：`Noto Sans SC`（正文）+ `ZCOOL XiaoWei`（标题）
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+所有对后端的请求经 `app/api/*` Route Handler 代理转发，浏览器不直连后端。

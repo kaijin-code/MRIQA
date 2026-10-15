@@ -65,6 +65,18 @@ async def init_db() -> None:
                 "FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL"
             ))
 
+        result = await conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='users' AND column_name='is_admin'"
+        ))
+        if result.first() is None:
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT false"
+            ))
+        await conn.execute(text(
+            "UPDATE users SET is_admin = true WHERE username = 'admin' AND is_admin = false"
+        ))
+
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with SessionLocal() as session:

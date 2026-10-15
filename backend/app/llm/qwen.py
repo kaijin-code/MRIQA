@@ -9,18 +9,11 @@ from typing import Any
 
 from ..config import get_settings
 
-logger = logging.getLogger(__name__)
-
-_dashscope_http_base_url = os.environ.pop("DASHSCOPE_HTTP_BASE_URL", None)
-import dashscope
-from dashscope.embeddings import TextEmbedding
-
-if _dashscope_http_base_url is not None:
-    os.environ["DASHSCOPE_HTTP_BASE_URL"] = _dashscope_http_base_url
-
 from langchain_community.chat_models.tongyi import ChatTongyi
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+
+logger = logging.getLogger(__name__)
 
 
 class _DashScopeEmbeddings:
@@ -55,10 +48,14 @@ class _DashScopeEmbeddings:
         return vectors
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        from dashscope.embeddings import TextEmbedding
+
         response = TextEmbedding.call(model=self._model, input=texts)
         return self._parse_response(response)
 
     def embed_query(self, text: str) -> list[float]:
+        from dashscope.embeddings import TextEmbedding
+
         response = TextEmbedding.call(model=self._model, input=[text])
         vectors = self._parse_response(response)
         return vectors[0] if vectors else []
@@ -67,19 +64,27 @@ class _DashScopeEmbeddings:
 class QwenClient:
     def __init__(self) -> None:
         settings = get_settings()
-        if settings.dashscope_api_key:
-            os.environ.setdefault("DASHSCOPE_API_KEY", settings.dashscope_api_key)
-            dashscope.api_key = settings.dashscope_api_key
 
         if settings.dashscope_http_base_url:
             self._chat = ChatOpenAI(
                 model=settings.qwen_model,
                 temperature=0.2,
-                api_key=settings.dashscope_api_key,
+                api_key=settings.dashscope_api_key or "EMPTY",
                 base_url=settings.dashscope_http_base_url,
             )
-            self._embeddings = _DashScopeEmbeddings(model=settings.qwen_embedding_model)
+            # check_embedding_ctx_length=False 避免按 OpenAI 模型用 tiktoken 分词计数
+            self._embeddings = OpenAIEmbeddings(
+                model=settings.qwen_embedding_model,
+                api_key=settings.dashscope_api_key or "EMPTY",
+                base_url=settings.dashscope_http_base_url,
+                check_embedding_ctx_length=False,
+            )
         else:
+            import dashscope
+
+            if settings.dashscope_api_key:
+                os.environ.setdefault("DASHSCOPE_API_KEY", settings.dashscope_api_key)
+                dashscope.api_key = settings.dashscope_api_key
             self._chat = ChatTongyi(model=settings.qwen_model, temperature=0.2)
             self._embeddings = _DashScopeEmbeddings(model=settings.qwen_embedding_model)
 
