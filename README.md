@@ -98,7 +98,8 @@ FastAPI 后端
   - **纯文本文档**（`.txt` 等）：优先按段落（双换行）拆分，小段落自动合并至 `CHUNK_SIZE` 上限，超长段落按中英文句子边界拆分，最后按字符数兜底（`CHUNK_OVERLAP` 仅在字符兜底时生效）
 - 调用 DashScope 文本向量模型生成 embedding 并写入 pgvector
 - 技术支持 Agent 在每次回答前用 cosine 距离召回 Top-K（默认 5），低于 `RAG_MIN_SIMILARITY`（默认 0.2）的片段会被过滤
-- 引用信息（document_id、chunk_id、source、score）随回复返回，前端可展开查看
+- 引用信息（document_id、chunk_id、chunk_index、source、score）随回复返回，前端可展开查看
+- 证据不足时拒答/澄清：所有角色共享统一的回答规范——知识库无相关片段或片段不足以回答时，明确说明并拒答或向用户提出澄清问题，而非编造答案
 
 ### SSE 流式输出
 
@@ -346,7 +347,43 @@ event: done        data: {}
 
 ---
 
-## 九、当前限制
+## 九、RAG 评测（eval/）
+
+基于有明确许可的中文开源文档构建的起步评测集，衡量检索质量、引用定位与拒答/澄清行为。
+
+### 组成
+
+| 路径 | 说明 |
+| --- | --- |
+| `eval/corpus/` | 语料：FastAPI 官方中文文档 10 章（MIT，来源与许可见 `NOTICE.md`） |
+| `eval/questions.jsonl` | 40 题评测集：32 可答题（含期望来源与关键词）+ 6 无证据题（期望拒答）+ 2 模糊题（期望澄清追问） |
+| `eval/run_eval.py` | 评测脚本：入库语料 → 逐题检索 → LLM 问答 → 输出 `eval/report.md`，默认评测后自动清理语料 |
+
+### 指标
+
+- **检索命中率 Hit@K / 关键词覆盖率**：期望文档与证据关键词是否进入召回结果（不调 LLM，可单独跑）
+- **引用准确率**：回答的 citations 是否包含期望文档（引用带 `chunk_index`，可定位到文档内切片）
+- **拒答正确率**：无证据题是否拒答而非编造
+- **澄清率**：模糊题是否给出澄清追问
+
+### 运行
+
+```cmd
+:: 仅检索评测（快速，不调 LLM）
+backend\.venv\Scripts\python.exe eval\run_eval.py --retrieval-only
+
+:: 完整评测（含 LLM 问答，需 .env 配好 DASHSCOPE_API_KEY）
+backend\.venv\Scripts\python.exe eval\run_eval.py
+
+:: 评测后保留语料 / 只跑前 N 题
+backend\.venv\Scripts\python.exe eval\run_eval.py --keep --limit 10
+```
+
+要求：数据库可达（本地 `docker compose up -d` 或局域网实例），后端 `backend/.env` 配置生效。
+
+---
+
+## 十、当前限制
 
 - 角色调度依赖 LLM 的输出格式，极端情况下会回退到客服单角色
 - 历史上下文窗口固定为最近 10 条，未做 token 级裁剪
@@ -354,6 +391,6 @@ event: done        data: {}
 
 ---
 
-## 十、开源许可
+## 十一、开源许可
 
 本项目基于 [MIT License](LICENSE) 开源。

@@ -15,6 +15,8 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 logger = logging.getLogger(__name__)
 
+_EMBED_BATCH_SIZE = 10
+
 
 class _DashScopeEmbeddings:
     def __init__(self, model: str) -> None:
@@ -179,7 +181,12 @@ class QwenClient:
     async def embed_texts(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-        return await asyncio.to_thread(self._embeddings.embed_documents, texts)
+        # DashScope 端点单次嵌入上限 10 条文本
+        embeddings: list[list[float]] = []
+        for start in range(0, len(texts), _EMBED_BATCH_SIZE):
+            batch = texts[start : start + _EMBED_BATCH_SIZE]
+            embeddings.extend(await asyncio.to_thread(self._embeddings.embed_documents, batch))
+        return embeddings
 
     async def embed_query(self, text: str) -> list[float]:
         return await asyncio.to_thread(self._embeddings.embed_query, text)

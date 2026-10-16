@@ -1,0 +1,40 @@
+{"id": "q001", "type": "answerable", "question": "启动 FastAPI 开发服务器的命令是什么？", "expected_source": "tutorial_first-steps.md", "expected_keywords": ["fastapi dev"]}
+{"id": "q002", "type": "answerable", "question": "FastAPI 自动生成的交互式 API 文档由哪个工具提供？访问什么地址可以看到它？", "expected_source": "tutorial_first-steps.md", "expected_keywords": ["Swagger UI", "/docs"]}
+{"id": "q003", "type": "answerable", "question": "FastAPI 除了 Swagger UI 之外还提供另一套可选的 API 文档，它叫什么、访问哪个地址？", "expected_source": "tutorial_first-steps.md", "expected_keywords": ["ReDoc", "/redoc"]}
+{"id": "q004", "type": "answerable", "question": "通过 FastAPI 能使用 Starlette 的所有功能吗？为什么？", "expected_source": "tutorial_first-steps.md", "expected_keywords": ["Starlette"]}
+{"id": "q005", "type": "answerable", "question": "把路径参数声明为 int 类型后，访问 /items/foo 会发生什么？", "expected_source": "tutorial_path-params.md", "expected_keywords": ["int_parsing"]}
+{"id": "q006", "type": "answerable", "question": "FastAPI 的所有数据校验都由哪个库在幕后完成？", "expected_source": "tutorial_path-params.md", "expected_keywords": ["Pydantic"]}
+{"id": "q007", "type": "answerable", "question": "同时需要 /users/me 和 /users/{user_id} 两个路径操作时，声明顺序上有什么讲究？", "expected_source": "tutorial_path-params.md", "expected_keywords": ["之前", "顺序"]}
+{"id": "q008", "type": "answerable", "question": "怎么限制一个路径参数只能取预设的几个固定值？", "expected_source": "tutorial_path-params.md", "expected_keywords": ["Enum"]}
+{"id": "q009", "type": "answerable", "question": "如果路径参数本身也要包含一段路径（比如 /files/home/johndoe/myfile.txt），应该怎么声明？", "expected_source": "tutorial_path-params.md", "expected_keywords": [":path"]}
+{"id": "q010", "type": "answerable", "question": "查询参数在 URL 中位于什么位置、键值对之间用什么分隔？", "expected_source": "tutorial_query-params.md", "expected_keywords": ["&"]}
+{"id": "q011", "type": "answerable", "question": "怎么把一个查询参数声明为可选参数？", "expected_source": "tutorial_query-params.md", "expected_keywords": ["None"]}
+{"id": "q012", "type": "answerable", "question": "bool 类型的查询参数，哪些写法会被自动转换成 True？", "expected_source": "tutorial_query-params.md", "expected_keywords": ["on", "yes"]}
+{"id": "q013", "type": "answerable", "question": "FastAPI 从哪个版本开始支持用 Pydantic 模型来声明查询参数？", "expected_source": "tutorial_query-param-models.md", "expected_keywords": ["0.115.0"]}
+{"id": "q014", "type": "answerable", "question": "怎么禁止客户端发送额外的查询参数并让其收到错误？", "expected_source": "tutorial_query-param-models.md", "expected_keywords": ["forbid"]}
+{"id": "q015", "type": "answerable", "question": "声明请求体应该使用什么方式？", "expected_source": "tutorial_body.md", "expected_keywords": ["BaseModel"]}
+{"id": "q016", "type": "answerable", "question": "FastAPI 是按什么规则区分函数参数是路径参数、查询参数还是请求体的？", "expected_source": "tutorial_body.md", "expected_keywords": ["单一类型"]}
+{"id": "q017", "type": "answerable", "question": "客户端向 API 发送数据应该使用哪些 HTTP 方法？用 GET 发送请求体为什么不推荐？", "expected_source": "tutorial_body.md", "expected_keywords": ["POST"]}
+{"id": "q018", "type": "answerable", "question": "声明 header 参数必须使用什么？如果不用会发生什么？", "expected_source": "tutorial_header-params.md", "expected_keywords": ["Header"]}
+{"id": "q019", "type": "answerable", "question": "Header 参数名中的下划线默认会被自动转换成什么字符？", "expected_source": "tutorial_header-params.md", "expected_keywords": ["连字符"]}
+{"id": "q020", "type": "answerable", "question": "如何禁用 Header 参数下划线的自动转换？启用时有什么风险？", "expected_source": "tutorial_header-params.md", "expected_keywords": ["convert_underscores"]}
+{"id": "q021", "type": "answerable", "question": "要向 API 客户端返回 HTTP 错误响应，应该使用什么？它是 return 还是 raise？", "expected_source": "tutorial_handling-errors.md", "expected_keywords": ["HTTPException"]}
+{"id": "q022", "type": "answerable", "question": "HTTPException 的 detail 参数可以传递哪些类型的值？", "expected_source": "tutorial_handling-errors.md", "expected_keywords": ["JSON"]}
+{"id": "q023", "type": "answerable", "question": "怎么为自己的自定义异常安装全局的异常处理器？", "expected_source": "tutorial_handling-errors.md", "expected_keywords": ["exception_handler"]}
+{"id": "q024", "type": "answerable", "question": "想覆盖请求校验错误的默认响应行为，应该处理哪个异常类？", "expected_source": "tutorial_handling-errors.md", "expected_keywords": ["RequestValidationError"]}
+{"id": "q025", "type": "answerable", "question": "注册 HTTPException 的异常处理器时应该注册哪一个？为什么？", "expected_source": "tutorial_handling-errors.md", "expected_keywords": ["Starlette"]}
+{"id": "q026", "type": "answerable", "question": "OAuth2 的 Password 流程配合 Bearer 令牌，FastAPI 提供了哪个类来实现？", "expected_source": "tutorial_security_first-steps.md", "expected_keywords": ["OAuth2PasswordBearer"]}
+{"id": "q027", "type": "answerable", "question": "为什么在 FastAPI 中使用 OAuth2 需要安装 python-multipart 包？", "expected_source": "tutorial_security_first-steps.md", "expected_keywords": ["表单"]}
+{"id": "q028", "type": "answerable", "question": "OAuth2PasswordBearer 在请求缺少 Authorization 头时会返回什么状态码？", "expected_source": "tutorial_security_first-steps.md", "expected_keywords": ["401"]}
+{"id": "q029", "type": "answerable", "question": "应用挂在会移除路径前缀的代理后面时，应该怎么配置？", "expected_source": "advanced_behind-a-proxy.md", "expected_keywords": ["root_path"]}
+{"id": "q030", "type": "answerable", "question": "繁重的后台计算任务不建议用 BackgroundTasks 时，文档推荐改用什么工具？", "expected_source": "tutorial_background-tasks.md", "expected_keywords": ["Celery"]}
+{"id": "q031", "type": "answerable", "question": "在同一个请求中同时接收表单数据和上传文件，应该怎么声明参数？有什么限制？", "expected_source": "tutorial_request-forms-and-files.md", "expected_keywords": ["File", "Form"]}
+{"id": "q032", "type": "answerable", "question": "接收文件上传或表单数据之前，需要先安装什么包？", "expected_source": "tutorial_request-forms-and-files.md", "expected_keywords": ["python-multipart"]}
+{"id": "q033", "type": "no_evidence", "question": "FastAPI 应该怎么配置数据库连接池的最大连接数？", "expected_refusal": true}
+{"id": "q034", "type": "no_evidence", "question": "FastAPI 商业版的企业授权费用是多少钱一年？", "expected_refusal": true}
+{"id": "q035", "type": "no_evidence", "question": "如何将 FastAPI 应用打包成 Docker 镜像并推送到 AWS ECR？", "expected_refusal": true}
+{"id": "q036", "type": "no_evidence", "question": "FastAPI 与 Django ORM 集成的推荐步骤是什么？", "expected_refusal": true}
+{"id": "q037", "type": "no_evidence", "question": "怎么为 FastAPI 的 WebSocket 端点实现心跳检测和断线重连？", "expected_refusal": true}
+{"id": "q038", "type": "no_evidence", "question": "FastAPI 官方目前列出的赞助商公司有哪些？", "expected_refusal": true}
+{"id": "q039", "type": "ambiguous", "question": "FastAPI 里的参数怎么用？", "expected_clarification": true}
+{"id": "q040", "type": "ambiguous", "question": "用 FastAPI 写个东西要注意什么？", "expected_clarification": true}

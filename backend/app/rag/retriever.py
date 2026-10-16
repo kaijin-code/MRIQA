@@ -16,6 +16,7 @@ from ..models import Chunk, Document
 class RetrievedChunk:
     chunk_id: UUID
     document_id: UUID
+    chunk_index: int
     content: str
     source: str | None
     score: float
@@ -48,6 +49,7 @@ async def retrieve_chunks(query: str, session: AsyncSession) -> list[RetrievedCh
             RetrievedChunk(
                 chunk_id=chunk.id,
                 document_id=chunk.document_id,
+                chunk_index=chunk.chunk_index,
                 content=chunk.content,
                 source=source,
                 score=score,

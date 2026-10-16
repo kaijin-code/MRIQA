@@ -20,6 +20,7 @@ class ChatRequest(BaseModel):
 class ChunkCitation(BaseModel):
     document_id: UUID
     chunk_id: UUID
+    chunk_index: int = 0
     source: str | None = None
     score: float
 
