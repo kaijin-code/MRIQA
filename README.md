@@ -1,6 +1,31 @@
 # 多角色智能问答 Agent 系统
 
+[![CI](https://github.com/kaijin-code/MRIQA/actions/workflows/ci.yml/badge.svg)](https://github.com/kaijin-code/MRIQA/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Node](https://img.shields.io/badge/node-20%2B-green)
+
 一个面向中文场景的多角色协作 AI 对话系统：用户注册登录后提出问题，由调度器自动决定哪些角色（客服 / 技术支持 / 产品经理）参与回答，技术支持角色还会基于知识库做 RAG 检索增强，所有对话按用户归属保存在 PostgreSQL 中支持多轮上下文。对话支持 SSE 流式输出，前端实时逐字显示回复。
+
+> **English** — A multi-role collaborative RAG Q&A system: an LLM router dispatches each question to customer-service / tech-support / product-manager agents; answers are grounded in a pgvector knowledge base with locatable citations, and agents refuse or ask for clarification when evidence is insufficient. Ships with a 40-question evaluation harness (retrieval hit / citation accuracy / abstention all at 100%).
+
+## Quick Start
+
+```cmd
+git clone https://github.com/kaijin-code/MRIQA.git
+cd MRIQA
+docker compose up -d          :: 本地 PostgreSQL + pgvector（或改用已有实例）
+
+cd backend
+python -m venv .venv && .venv\Scripts\activate
+pip install -r requirements.lock.txt
+copy .env.example .env         :: 编辑 .env，填入 DASHSCOPE_API_KEY
+uvicorn app.main:app --reload  :: 后端 http://localhost:8000
+
+cd ..\frontend
+npm install
+npm run dev                    :: 前端 http://localhost:3000
+```
 
 项目分为 `backend`（FastAPI）与 `frontend`（Next.js）两部分。
 

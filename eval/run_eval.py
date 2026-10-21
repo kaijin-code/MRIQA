@@ -21,13 +21,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "backend"))
 
-from app.agents.technical_support import TechnicalSupportAgent  # noqa: E402
-from app.config import get_settings  # noqa: E402
-from app.db import SessionLocal, init_db  # noqa: E402
-from app.models import Document  # noqa: E402
-from app.rag.ingest import ingest_documents  # noqa: E402
-from app.rag.retriever import retrieve_chunks  # noqa: E402
-from app.schemas import DocumentInput  # noqa: E402
+from app.agents.technical_support import TechnicalSupportAgent
+from app.config import get_settings
+from app.db import SessionLocal, init_db
+from app.models import Document
+from app.rag.ingest import ingest_documents
+from app.rag.retriever import retrieve_chunks
+from app.schemas import DocumentInput
 
 CORPUS_DIR = Path(__file__).resolve().parent / "corpus"
 QUESTIONS_FILE = Path(__file__).resolve().parent / "questions.jsonl"
@@ -150,7 +150,7 @@ async def eval_answer(question: dict, session, agent: TechnicalSupportAgent) -> 
         ]
         if question["type"] == "answerable":
             result.cited_expected = question["expected_source"] in citation_sources
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         result.error = str(exc)[:200]
     return result
 
@@ -195,7 +195,7 @@ def write_report(results: list[QuestionResult], retrieval_only: bool, elapsed: f
     lines.append(f"- 模式：{'仅检索' if retrieval_only else '检索 + LLM 问答'}")
     lines.append(f"- 模型：`{settings.qwen_model}` / 嵌入 `{settings.qwen_embedding_model}`")
     lines.append(f"- 检索参数：top_k={settings.rag_top_k}, min_similarity={settings.rag_min_similarity}")
-    lines.append(f"- 语料：FastAPI 中文文档 10 章（MIT），评测后默认清理")
+    lines.append("- 语料：FastAPI 中文文档 10 章（MIT），评测后默认清理")
     lines.append(f"- 总耗时：{elapsed:.0f}s")
     lines.append("")
     lines.append("## 汇总指标")

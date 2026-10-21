@@ -3,7 +3,6 @@ from __future__ import annotations
 import io
 import os
 
-
 ALLOWED_EXTENSIONS = frozenset({
     ".txt", ".md", ".markdown", ".text",
     ".docx", ".xlsx", ".pdf",

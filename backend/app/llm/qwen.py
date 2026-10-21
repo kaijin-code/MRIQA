@@ -7,11 +7,11 @@ from collections.abc import AsyncIterator
 from http import HTTPStatus
 from typing import Any
 
-from ..config import get_settings
-
 from langchain_community.chat_models.tongyi import ChatTongyi
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
