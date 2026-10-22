@@ -52,6 +52,9 @@ class BaseRoleAgent:
                 "chunk_index": item.chunk_index,
                 "source": item.source,
                 "score": item.score,
+                "start_line": item.start_line,
+                "end_line": item.end_line,
+                "line_number_kind": item.line_number_kind,
             }
             for item in retrieved
         ]

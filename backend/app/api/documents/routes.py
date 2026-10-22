@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from ...auth import require_admin
 from ...db import get_session
@@ -90,6 +91,7 @@ async def list_documents(
             Document,
             func.count(Chunk.id).label("chunk_count"),
         )
+        .options(load_only(Document.id, Document.title, Document.source, Document.created_at))
         .outerjoin(Chunk, Chunk.document_id == Document.id)
         .group_by(Document.id)
         .order_by(Document.created_at.desc())

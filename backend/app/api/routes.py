@@ -14,10 +14,12 @@ from ..auth import get_current_user
 from ..db import get_session
 from ..models import Conversation, Message, User, _utcnow
 from ..orchestrator import run_orchestrator, run_orchestrator_stream
+from ..rag.citations import citation_chunk_ids, enrich_citation_sources, load_citation_excerpts
 from ..schemas import (
     ChatRequest,
     ChatResponse,
     ChunkCitation,
+    CitationExcerpt,
     ConversationHistoryResponse,
     ConversationListResponse,
     ConversationSummary,
@@ -157,6 +159,9 @@ async def get_conversation_history(
     )
     messages = (await session.execute(stmt)).scalars().all()
 
+    excerpts = await load_citation_excerpts(
+        citation_chunk_ids(source for message in messages for source in (message.sources or [])), session,
+    )
     items: list[MessageItem] = []
     for message in messages:
         items.append(
@@ -164,7 +169,7 @@ async def get_conversation_history(
                 id=message.id,
                 role=message.role,
                 content=message.content,
-                sources=_json_safe(message.sources) if message.sources else None,
+                sources=_json_safe(enrich_citation_sources(message.sources, excerpts)) if message.sources else None,
                 created_at=message.created_at,
             )
         )
@@ -175,6 +180,32 @@ async def get_conversation_history(
         created_at=conversation.created_at,
         messages=items,
     )
+
+
+@router.get("/conversations/{conversation_id}/citations/{chunk_id}", response_model=CitationExcerpt)
+async def get_citation_excerpt(
+    conversation_id: UUID,
+    chunk_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> CitationExcerpt:
+    conversation = await session.get(Conversation, conversation_id)
+    if conversation is None or conversation.deleted_at is not None or conversation.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    messages = (await session.execute(
+        select(Message).where(Message.conversation_id == conversation_id, Message.deleted_at.is_(None))
+    )).scalars().all()
+    cited = any(
+        chunk_id in citation_chunk_ids(message.sources or [])
+        for message in messages if message.deleted_at is None
+    )
+    if not cited:
+        raise HTTPException(status_code=404, detail="Citation not found")
+    excerpts = await load_citation_excerpts([chunk_id], session)
+    excerpt = excerpts.get(chunk_id)
+    if excerpt is None:
+        raise HTTPException(status_code=404, detail="Citation source is no longer available")
+    return CitationExcerpt.model_validate(excerpt)
 
 
 @router.post("/chat", response_model=ChatResponse)

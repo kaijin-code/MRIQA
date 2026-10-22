@@ -35,7 +35,7 @@ docker compose up -d
 
 ## 知识库权限
 
-文档接口（ingest / upload / list / download / delete）仅限管理员（`users.is_admin`）；启动时会自动将 `admin` 用户名置为管理员。普通用户仅通过 RAG 检索间接消费知识库。
+文档接口（ingest / upload / list / download / delete）仅限管理员（`users.is_admin`）；启动时会自动将 `admin` 用户名置为管理员。普通用户通过 RAG 检索消费知识库，并可通过 `GET /api/conversations/{conversation_id}/citations/{chunk_id}` 预览本人会话中已引用的片段；该接口不会返回整份文档。
 
 ## Updating the lock file
 
@@ -44,3 +44,9 @@ docker compose up -d
 ```cmd
 pip freeze > requirements.lock.txt
 ```
+
+## 引用定位与验证
+
+新上传文档保留提取后的原始文本；能唯一匹配的引用返回原文行号。旧索引或不能准确映射的片段使用明确标注的预览行号。已有会话在读取时补齐定位字段，无需改写历史消息。
+
+运行 `.\.venv\Scripts\python.exe -m unittest discover -s tests -v` 验证行号、权限、历史兼容和片段预览。

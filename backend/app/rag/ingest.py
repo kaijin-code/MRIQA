@@ -23,7 +23,7 @@ async def ingest_documents(
 
     for doc in documents:
         doc_id = uuid4()
-        doc_row = Document(id=doc_id, title=doc.title, source=doc.source)
+        doc_row = Document(id=doc_id, title=doc.title, source=doc.source, content=doc.text)
         session.add(doc_row)
 
         chunks = chunk_document(doc.text, doc.source, settings.chunk_size, settings.chunk_overlap)

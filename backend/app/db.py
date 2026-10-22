@@ -18,6 +18,7 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text('ALTER TABLE documents ADD COLUMN IF NOT EXISTS content TEXT'))
 
         result = await conn.execute(text(
             "SELECT column_name FROM information_schema.columns "
