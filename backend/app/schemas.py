@@ -23,6 +23,19 @@ class ChunkCitation(BaseModel):
     chunk_index: int = 0
     source: str | None = None
     score: float
+    start_line: int | None = None
+    end_line: int | None = None
+    line_number_kind: Literal['original', 'reconstructed'] | None = None
+
+
+class CitationExcerpt(BaseModel):
+    document_id: UUID
+    chunk_id: UUID
+    source: str | None = None
+    start_line: int | None = None
+    end_line: int | None = None
+    line_number_kind: Literal["original", "reconstructed"] | None = None
+    content: str
 
 
 class RoleResponse(BaseModel):

@@ -3,15 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { authFetch } from "@/app/lib/api";
+import { CitedMessage } from "@/app/components/CitedMessage";
+import type { Citation } from "@/app/lib/citations";
 
 type RoleId = "user" | "customer_service" | "technical_support" | "product_manager";
-
-type Citation = {
-  document_id: string;
-  chunk_id: string;
-  source?: string | null;
-  score: number;
-};
 
 type ConversationSummary = {
   id: string;
@@ -83,12 +78,6 @@ function formatTime(value?: string | null): string {
   });
 }
 
-function formatScore(score?: number): string {
-  if (typeof score !== "number") return "";
-  const percent = Math.round(score * 1000) / 10;
-  return `${percent}%`;
-}
-
 export default function Home() {
   const { user, logout, isLoading: isAuthLoading } = useAuth();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -100,7 +89,6 @@ export default function Home() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
-  const [openCitations, setOpenCitations] = useState<Record<string, boolean>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [hasReceivedToken, setHasReceivedToken] = useState(false);
@@ -504,13 +492,6 @@ export default function Home() {
     }
   }
 
-  function handleToggleCitations(messageId: string): void {
-    setOpenCitations((prev) => ({
-      ...prev,
-      [messageId]: !prev[messageId],
-    }));
-  }
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_#efe6d8_0,_#f6f1e8_45%,_#f9f7f2_100%)]">
       <div className="absolute right-6 top-5 z-10 flex items-center gap-3 text-sm">
@@ -689,7 +670,6 @@ export default function Home() {
               const isUser = message.role === "user";
               const roleLabel = getRoleLabel(message.role);
               const roleStyle = getRoleStyle(message.role);
-              const hasCitations = (message.citations?.length ?? 0) > 0;
 
               const isTemp = message.id.startsWith("local-") || message.id.startsWith("stream-");
 
@@ -724,46 +704,13 @@ export default function Home() {
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-2 whitespace-pre-wrap leading-6">
-                      {message.content}
-                      {isSending && message.id === streamingRef.current.currentMsgId ? (
-                        <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-[var(--accent)] align-text-bottom" />
-                      ) : null}
-                    </p>
-
-                    {hasCitations ? (
-                      <div className="mt-3 rounded-2xl border border-[var(--border)] bg-emerald-50/40 px-3 py-2 text-xs text-[var(--muted)]">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleCitations(message.id)}
-                          className="flex w-full items-center justify-between font-medium text-[var(--accent)]"
-                        >
-                          <span>引用来源（{message.citations?.length}）</span>
-                          <span>{openCitations[message.id] ? "收起" : "展开"}</span>
-                        </button>
-                        {openCitations[message.id] ? (
-                          <ul className="mt-2 space-y-2">
-                            {message.citations?.map((citation, index) => {
-                              const sourceLabel =
-                                citation.source?.trim() ||
-                                `文档 ${citation.document_id.slice(0, 8)} / 片段 ${citation.chunk_id.slice(0, 8)}`;
-                              const score = formatScore(citation.score);
-                              return (
-                                <li
-                                  key={`${message.id}-citation-${index}`}
-                                  className="rounded-xl border border-[var(--border)] bg-white px-3 py-2"
-                                >
-                                  <p className="text-[var(--foreground)]">{sourceLabel}</p>
-                                  {score ? (
-                                    <p className="mt-1 text-[var(--muted)]">相似度 {score}</p>
-                                  ) : null}
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        ) : null}
-                      </div>
-                    ) : null}
+                    <CitedMessage
+                      content={message.content}
+                      citations={message.citations}
+                      conversationId={activeId}
+                      isPending={isSending && isTemp}
+                      isStreaming={isSending && message.id === streamingRef.current.currentMsgId}
+                    />
                   </div>
                   {isUser && !isTemp ? (
                     <button

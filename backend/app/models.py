@@ -73,6 +73,7 @@ class Document(Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     source: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     chunks: Mapped[list[Chunk]] = relationship(

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import get_settings
 from ..llm.qwen import get_qwen_client
 from ..models import Chunk, Document
+from .citations import load_citation_excerpts
 
 
 @dataclass
@@ -19,6 +20,9 @@ class RetrievedChunk:
     content: str
     source: str | None
     score: float
+    start_line: int | None = None
+    end_line: int | None = None
+    line_number_kind: str | None = None
 
 
 async def retrieve_chunks(query: str, session: AsyncSession) -> list[RetrievedChunk]:
@@ -55,4 +59,11 @@ async def retrieve_chunks(query: str, session: AsyncSession) -> list[RetrievedCh
             )
         )
 
+    excerpts = await load_citation_excerpts((item.chunk_id for item in results), session)
+    for item in results:
+        excerpt = excerpts.get(item.chunk_id)
+        if excerpt is not None:
+            item.start_line = excerpt["start_line"]
+            item.end_line = excerpt["end_line"]
+            item.line_number_kind = excerpt["line_number_kind"]
     return results
